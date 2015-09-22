@@ -1,0 +1,6 @@
+if (!configurations.findByName("default")) {
+    // allow other projects to directly use 'icu4j.jar'
+    configurations.create("default")
+}
+
+artifacts.add("default", file('icu4j.jar'))

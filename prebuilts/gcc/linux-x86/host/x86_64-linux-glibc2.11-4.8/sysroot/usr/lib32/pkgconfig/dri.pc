@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=/usr/lib/glx
+includedir=/usr/include
+dridriverdir=/usr/lib/dri
+
+Name: dri
+Description: Direct Rendering Infrastructure
+Version: 7.7.1
+Requires.private: libdrm >= 2.4.15
+Cflags: -I${includedir}

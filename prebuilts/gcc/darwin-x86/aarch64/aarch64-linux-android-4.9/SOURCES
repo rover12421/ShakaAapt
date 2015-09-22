@@ -1,0 +1,49 @@
+Using built-in specs.
+COLLECT_GCC=./aarch64-linux-android-gcc
+COLLECT_LTO_WRAPPER=/Users/xur/darwin/toolchains/aarch64-linux-android-4.9/prebuilt/darwin-x86_64/bin/../libexec/gcc/aarch64-linux-android/4.9.x-google/lto-wrapper
+Target: aarch64-linux-android
+Configured with: /tmp/AOSP-toolchain/build/../gcc/gcc-4.9/configure --prefix=/tmp/ndk-dehaochen/build/toolchain/prefix --target=aarch64-linux-android --host=x86_64-apple-darwin --build=x86_64-apple-darwin --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --with-gmp=/tmp/ndk-dehaochen/build/toolchain/temp-install --with-mpfr=/tmp/ndk-dehaochen/build/toolchain/temp-install --with-mpc=/tmp/ndk-dehaochen/build/toolchain/temp-install --with-cloog=/tmp/ndk-dehaochen/build/toolchain/temp-install --with-isl=/tmp/ndk-dehaochen/build/toolchain/temp-install --with-ppl=/tmp/ndk-dehaochen/build/toolchain/temp-install --disable-ppl-version-check --disable-cloog-version-check --disable-isl-version-check --enable-cloog-backend=isl --with-host-libstdcxx='-static-libgcc -lstdc++ -lm' --disable-libssp --enable-threads --disable-nls --disable-libmudflap --disable-libgomp --disable-libstdc__-v3 --disable-sjlj-exceptions --disable-shared --disable-tls --disable-libitm --enable-initfini-array --disable-nls --prefix=/tmp/ndk-dehaochen/build/toolchain/prefix --with-sysroot=/tmp/ndk-dehaochen/build/toolchain/prefix/sysroot --with-binutils-version=2.25 --with-mpfr-version=3.1.1 --with-mpc-version=1.0.1 --with-gmp-version=5.0.5 --with-gcc-version=4.9 --with-gdb-version=7.7 --with-gxx-include-dir=/tmp/ndk-dehaochen/build/toolchain/prefix/include/c++/4.9 --with-bugurl=http://source.android.com/source/report-bugs.html --disable-bootstrap --enable-plugins --enable-libgomp --enable-gnu-indirect-function --disable-libsanitizer --enable-gold --enable-ld=default --enable-threads --enable-graphite=yes --with-cloog-version=0.18.0 --with-isl-version=0.11.1 --enable-eh-frame-hdr-for-static --enable-fix-cortex-a53-835769 --program-transform-name='s&^&aarch64-linux-android-&' --enable-gold
+Thread model: posix
+gcc version 4.9.x-google 20140827 (prerelease) (GCC) 
+
+gcc:
+commit 0dd93631a0aa1b5c2f807270305225bc2786393b
+Author: Andrew Hsieh <andrewhsieh@google.com>
+
+    backport fix for ICE: in add_stores, at var-tracking.c:6000
+
+binutils:
+commit c39479f4ab4d372b518957871e1f205a03e7c3d6
+Author: Andrew Hsieh <andrewhsieh@google.com>
+
+    Fix darwin build
+
+gdb:
+commit d54e4b7af5c45d4bcde6f65e5dc44c821739740f
+Author: Andrew Hsieh <andrewhsieh@google.com>
+
+    Misc gdb-7.7 fixes for Android
+
+gmp:
+commit e6b9669dafc6a5f83c80b4b4176359b78bccdc90
+Author: David 'Digit' Turner <digit@google.com>
+
+    Add gmp-5.0.5.tar.bz2
+
+mpfr:
+commit bfcf1bfa38469208aaad8873cd4c68781061d90f
+Author: Andrew Hsieh <andrewhsieh@google.com>
+
+    add mpfr-3.1.1.tar.bz2
+
+build:
+commit f8db3f1d0824da5315df3415814ba76108157796
+Author: Andrew Hsieh <andrewhsieh@google.com>
+
+    Static link ld.gold by mingw to avoid dependencies on libwinpthread-1.dll
+
+expat:
+commit 40172a0ae9d40a068f1e1a48ffcf6a1ccf765ed5
+Author: Jing Yu <jingyu@google.com>
+
+    expat package for building gdb-7.3

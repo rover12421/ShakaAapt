@@ -1,0 +1,10 @@
+toolchain/binutils.git:          5a2caf34e4995860baf405552163df288000b7bf [2.21, 2.22, 2.23] Backport of the patch for keeping lto sections when linking with "-r" options (ld bfd behaviour).
+toolchain/build.git:             7eae5e66da2793a2a26bcd42357dca1ea6c391b9 Switch x86/x86-64 -mtune from "atom" to more generic "intel"
+toolchain/gcc.git:               283a0bf58fcf333c58a2a92c3ebbc41fb9eb1fdb Fix host 64-bit gcc4.6 build
+toolchain/gdb.git:               37c2cd1af0dd58048d965bac278fc5d83fea65a0 Fix segfault on 64-bits
+toolchain/gold.git:              8d401cf711539af5a2f78d12447341d774892618 Empty initial commit.
+toolchain/gmp.git:               e6b9669dafc6a5f83c80b4b4176359b78bccdc90 Add gmp-5.0.5.tar.bz2
+toolchain/mpfr.git:              bfcf1bfa38469208aaad8873cd4c68781061d90f add mpfr-3.1.1.tar.bz2
+toolchain/mpc.git:               835d16e92eed875638a8b5d552034c3b1aae045b add mpc-1.0.1.tar.gz
+toolchain/isl.git:               b05d4572958c5d497da793f3317084bab90c3033 add isl-0.11.1.tar.bz2 needed by GCC 4.8 with graphite
+toolchain/cloog.git:             98972d5434ffcb4d11d2c81a46600e9a1cda9110 MinGW-w64 build fix (lacks ffs declaration)

@@ -1,0 +1,43 @@
+From af1876972f9dc55af0e2f90fe563c6582f623f69 Mon Sep 17 00:00:00 2001
+From: Andrew Hsieh <andrewhsieh@google.com>
+Date: Wed, 12 Mar 2014 13:12:18 +0800
+Subject: [PATCH] Re-enable gcc4.6 libstdc++ versioning for host toolchain
+
+This CL reverts 4a0927423d51f594b870e58b3eb51574327f8b0e
+for prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.11-4.6
+
+Change-Id: I31c04c105692fe4cdb6f261920a05882539c3750
+---
+ gcc-4.6/libstdc++-v3/src/Makefile.am | 2 +-
+ gcc-4.6/libstdc++-v3/src/Makefile.in | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gcc-4.6/libstdc++-v3/src/Makefile.am b/gcc-4.6/libstdc++-v3/src/Makefile.am
+index 680a172..277317b 100644
+--- a/gcc-4.6/libstdc++-v3/src/Makefile.am
++++ b/gcc-4.6/libstdc++-v3/src/Makefile.am
+@@ -251,7 +251,7 @@ libstdc___la_DEPENDENCIES = \
+ 	$(top_builddir)/libsupc++/libsupc++convenience.la
+ 
+ libstdc___la_LDFLAGS = \
+-	-avoid-version ${version_arg} -lm
++	-version-info $(libtool_VERSION)${version_arg} -lm
+ 
+ libstdc___la_LINK = $(CXXLINK) $(libstdc___la_LDFLAGS)
+ 
+diff --git a/gcc-4.6/libstdc++-v3/src/Makefile.in b/gcc-4.6/libstdc++-v3/src/Makefile.in
+index d03acd5..146ec3f 100644
+--- a/gcc-4.6/libstdc++-v3/src/Makefile.in
++++ b/gcc-4.6/libstdc++-v3/src/Makefile.in
+@@ -466,7 +466,7 @@ libstdc___la_DEPENDENCIES = \
+ 	$(top_builddir)/libsupc++/libsupc++convenience.la
+ 
+ libstdc___la_LDFLAGS = \
+-	-avoid-version ${version_arg} -lm
++	-version-info $(libtool_VERSION) ${version_arg} -lm
+ 
+ libstdc___la_LINK = $(CXXLINK) $(libstdc___la_LDFLAGS)
+ 
+-- 
+1.9.0.279.gdc9e3eb
+

@@ -1,0 +1,12 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+modlibexecdir=${exec_prefix}/lib/pulse-0.9.21/modules
+
+Name: libpulse
+Description: PulseAudio Client Interface
+Version: 0.9.21-63-gd3efa-dirty
+Libs: -L${libdir} -lpulse 
+Libs.private: -lpulsecommon-0.9.21
+Cflags: -I${includedir} -D_REENTRANT

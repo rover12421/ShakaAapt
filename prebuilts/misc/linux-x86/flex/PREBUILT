@@ -1,0 +1,14 @@
+The objects in this prebuilt directory can be rebuilt
+using the source archive hosted at
+
+http://sourceforge.net/projects/flex/files/
+
+Commands:
+
+./configure
+make CFLAGS="-static" LDFLAGS="-static"
+# (Disregard the errors at the end of the build)
+rm flex
+make CFLAGS="-static" LDFLAGS="-static" flex
+# Copy the linker command line, replace it with static libm.a
+gcc  -static  -static -o flex ccl.o dfa.o ecs.o scanflags.o gen.o main.o misc.o nfa.o parse.o scan.o skel.o sym.o tblcmp.o yylex.o options.o scanopt.o buf.o tables.o tables_shared.o filter.o regex.o  /usr/lib/x86_64-linux-gnu/libm.a

@@ -1,0 +1,13 @@
+// To use the "android-support-test.jar" add the following dependency:
+//     compile project(":android-support-test")
+if (!configurations.findByName("default")) {
+    configurations.create("default")
+}
+artifacts.add("default", file("android-support-test.jar"))
+
+// To use the "android-support-test.jar" and the "esspresso-core.jar" add the following dependency:
+//     compile project(path: ":android-support-test", configuration: "espresso-core")
+if (!configurations.findByName("espresso-core")) {
+    configurations.create("espresso-core")
+}
+artifacts.add("espresso-core", file("espresso-core.jar"))

@@ -1,0 +1,9 @@
+The objects in this prebuilt directory can be rebuilt
+using the source in external/bison, from the top of
+the source tree.
+
+Build commands are:
+./configure
+make
+make install
+

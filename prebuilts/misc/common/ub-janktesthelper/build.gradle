@@ -1,0 +1,2 @@
+// allow other projects to directly use 'ub-janktesthelper.jar'
+artifacts.add("default", file('ub-janktesthelper.jar'))

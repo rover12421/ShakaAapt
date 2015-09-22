@@ -1,0 +1,43 @@
+From 2e742a5a06fb296c7aefa611b2b10c40c492eb36 Mon Sep 17 00:00:00 2001
+From: Andrew Hsieh <andrewhsieh@google.com>
+Date: Wed, 12 Mar 2014 13:16:16 +0800
+Subject: [PATCH] Re-enable gcc4.8 libstdc++ versioning for host toolchain
+
+This CL reverts f50a81165e305c7339bec78bd3c9cf8a35e1f233
+for prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.11-4.8
+
+Change-Id: I74e065eab22939e5dd7fd60f61aa00c6b933de80
+---
+ gcc-4.8/libstdc++-v3/src/Makefile.am | 2 +-
+ gcc-4.8/libstdc++-v3/src/Makefile.in | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gcc-4.8/libstdc++-v3/src/Makefile.am b/gcc-4.8/libstdc++-v3/src/Makefile.am
+index 07c4160..20dd918 100644
+--- a/gcc-4.8/libstdc++-v3/src/Makefile.am
++++ b/gcc-4.8/libstdc++-v3/src/Makefile.am
+@@ -68,7 +68,7 @@ libstdc___la_DEPENDENCIES = \
+ 	$(top_builddir)/src/c++11/libc++11convenience.la
+ 
+ libstdc___la_LDFLAGS = \
+-	-avoid-version ${version_arg} -lm
++	-version-info $(libtool_VERSION)${version_arg} -lm
+ 
+ libstdc___la_LINK = $(CXXLINK) $(libstdc___la_LDFLAGS)
+ 
+diff --git a/gcc-4.8/libstdc++-v3/src/Makefile.in b/gcc-4.8/libstdc++-v3/src/Makefile.in
+index 9721ebb..a7b3404 100644
+--- a/gcc-4.8/libstdc++-v3/src/Makefile.in
++++ b/gcc-4.8/libstdc++-v3/src/Makefile.in
+@@ -368,7 +368,7 @@ libstdc___la_DEPENDENCIES = \
+ 	$(top_builddir)/src/c++11/libc++11convenience.la
+ 
+ libstdc___la_LDFLAGS = \
+-	-avoid-version ${version_arg} -lm
++	-version-info $(libtool_VERSION) ${version_arg} -lm
+ 
+ libstdc___la_LINK = $(CXXLINK) $(libstdc___la_LDFLAGS)
+ 
+-- 
+1.9.0.279.gdc9e3eb
+

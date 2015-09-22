@@ -1,0 +1,5 @@
+The object in this prebuilt directory can be rebuilt from
+	platform/tools/base/perflib
+
+From the commit 8107ce21fd87d0c56a1155a1e83ee63187bd29d4
+

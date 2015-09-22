@@ -1,0 +1,4 @@
+The binaries in this prebuilt directory can be rebuilt using:
+
+lunch sdk-eng
+make win_sdk

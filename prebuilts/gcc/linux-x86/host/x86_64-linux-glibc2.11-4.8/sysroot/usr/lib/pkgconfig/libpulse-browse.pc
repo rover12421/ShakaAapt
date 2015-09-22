@@ -1,0 +1,12 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libpulse-browse
+Description: PulseAudio Network Browsing Interface
+Version: 0.9.21-63-gd3efa-dirty
+Libs: -L${libdir} -lpulse-browse 
+Libs.private: -lpulsecommon-0.9.21
+Cflags: -I${includedir} -D_REENTRANT
+Requires: libpulse

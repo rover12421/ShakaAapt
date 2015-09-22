@@ -1,0 +1,2 @@
+// allow other projects to directly use 'com.android.uiautomator.platform.common.jar'
+artifacts.add("default", file('com.android.uiautomator.platform.common.jar'))

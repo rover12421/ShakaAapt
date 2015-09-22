@@ -1,0 +1,2 @@
+// allow other projects to directly use 'PowerTestHelper.jar'
+artifacts.add("default", file('PowerTestHelper.jar'))

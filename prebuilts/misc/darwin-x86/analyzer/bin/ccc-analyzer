@@ -1,0 +1,94 @@
+#!/bin/sh
+
+# This script is invoked by Android build system "WITH_SYNTAX_CHECK=1 m/mm/mmm ..." and
+# accepts command line in the following format:
+#
+#    ccc-analyzer ARCH LOCAL_CC ...
+#
+# Under WITH_SYNTAX_CHECK=1, m/mm/mmm/mma/mmma wrap "make" with "tools/scan-build/scan-build"
+# which utillizes "clang --analyze" for static code analyses.  Script scan-build interposes
+# on compiler with CC/CXX ignored by the Android build system unfortunately.  Instead,
+# Android build system recognizes WITH_SYNTAX_CHECK and replace LOCAL_CC with our own ccc-syntax,
+# which in turn setup the following env. vars expected by tools/scan-build/ccc-analyzer
+#
+#   CCC_CC: The origianl LOCAL_CC which does the real compilation and code-gen
+#   CLANG: The clang compiler which run code analyses
+#
+# Our own ccc-syntax also export the following, and tools/scan-build/ccc-analyzer is slightly
+# modified to prefix/append them in options passed to clang for successful compilation
+#
+#   CLANG_FLAGS: Flags to set correct target, be compatible with gcc, etc
+#   CLANG_FLAGS_END:  Flags to override "$@"
+#
+
+ARCH="$1"
+LOCAL_CC="$2"
+shift ; shift
+
+# Turn off warning about unused options
+CLANG_FLAGS="-Qunused-arguments"
+
+# Turn off unknown warning options
+CLANG_FLAGS="$CLANG_FLAGS -Wno-unknown-warning-option"
+
+# Define WITH_SYNTAX_CHECK for code wish to behave differently when check
+CLANG_FLAGS="$CLANG_FLAGS -DWITH_SYNTAX_CHECK"
+
+# If LOCAL_CC is not clang and not compiling in c++ mode, turn on -std=gnu89 by default
+# and let "$@" later override it, if any
+test "$LOCAL_CC" != "${LOCAL_CC%-x c++}" -o "$LOCAL_CC" = "${LOCAL_CC%-xc++}" && cxx_mode=true
+if [ "$LOCAL_CC" = "${LOCAL_CC%clang}" -a "$cxx_mode" != "true" ] ; then
+    CLANG_FLAGS="$CLANG_FLAGS -std=gnu89"
+fi
+
+# Turn off warnings which aren't useful in this context
+CLANG_FLAGS="$CLANG_FLAGS -Wno-ignored-attributes -Wno-pedantic -Wno-builtin-requires-header -Wno-gnu -Wno-gnu-designator -Wno-knr-promoted-parameter"
+
+if [ "$ARCH" != "host" ]; then
+    # Add target to get proper pre-defined preprocessor symbols/macros.
+    case $ARCH in
+        arm) CLANG_FLAGS="$CLANG_FLAGS -target armv5te-none-linux-androideabi"
+            ;;
+        mips) CLANG_FLAGS="$CLANG_FLAGS -target mipsel-none-linux-android"
+            ;;
+        x86) CLANG_FLAGS="$CLANG_FLAGS -target i686-none-linux-android"
+            ;;
+    esac
+    if [ "$LOCAL_CC" != "${LOCAL_CC%clang*}" ]; then
+        # Don't look for its own lib/clang/x.y/include when LOCAL_CC is clang
+        # which is rebuilt from source w/o installing its include as well
+        CLANG_FLAGS="$CLANG_FLAGS -nostdinc"
+    fi
+else
+    # Note that unlike target flags where Android build system explicitly specify
+    # everything in command line, host tools have their own sysroot and --sysroot
+    # isn't explicitly added in the commmand line.  Likelywise for other gcc implicit
+    # search directories.
+    #
+    # We can query search paths by doing "gcc -v" and parsing the output with
+    # sed -n '1,/BEGIN/!{ /END/,/BEING/!p; }' (*1), but forking gcc here adds overhead.
+    # Because host tool refresh only once 1-2 year, here we hard-code the path obtained by (*2).
+    # ToDo: The build system can do it once for each module, although it still needs to
+    # prepare both -m32 and -m64 versions, anding 2 more args in additional to $ARCH
+    # and $LOCAL_CC
+    #
+    # (*1) as described in http://sed.sourceforge.net/sedfaq4.html#s4.24
+    # (*2) prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1/bin/i686-apple-darwin10-gcc -m64 -v -E - < /dev/null 2>&1 | \
+    #         sed -n '1,/> search starts here/!{ /End of search list/,/> search starts here/!p; }' |\
+    #         sed -e 's/^/-I/'
+    #      Likewise for -m32
+    #
+    CLANG_FLAGS_END="\
+-I prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1/lib/gcc/i686-apple-darwin10/4.2.1/include"
+fi
+
+# Turn off warnings (at the end) on features we exploit
+CLANG_FLAGS_END="$CLANG_FLAGS_END -Wno-return-type-c-linkage"
+
+# Call the real ccc-analyzer.  Note that tools/scan-build/ccc-analyzer "exec" $CCC_CC,
+# which is LOCAL_CC w/o optional ccache (in "ccache gcc" format)
+export CCC_CC="${LOCAL_CC##* }"
+export CLANG="`dirname $0`/analyzer"
+export CLANG_FLAGS
+export CLANG_FLAGS_END
+`dirname $0`/../tools/scan-build/ccc-analyzer "$@"
