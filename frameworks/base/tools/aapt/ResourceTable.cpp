@@ -1749,25 +1749,36 @@ ResourceTable::ResourceTable(Bundle* bundle, const String16& assetsPackage, Reso
     , mNumLocal(0)
     , mBundle(bundle)
 {
-    ssize_t packageId = -1;
-    switch (mPackageType) {
-        case App:
-        case AppFeature:
-            packageId = 0x7f;
-            break;
+    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+    ssize_t packageId = mBundle->getForcedPackageId();
+    /**
+     * port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+     * 的时候是`packageId == -1`
+     * [skip] only get packageId, if forced isn't passed
+     * #25db569 的时候修改为`packageId == -1`
+     */
+    if (packageId == -1) {
+//    ssize_t packageId = -1;
+        switch (mPackageType) {
+            case App:
+            case AppFeature:
+                packageId = 0x7f;
+                break;
 
-        case System:
-            packageId = 0x01;
-            break;
+            case System:
+                packageId = 0x01;
+                break;
 
-        case SharedLibrary:
-            packageId = 0x00;
-            break;
+            case SharedLibrary:
+                packageId = 0x00;
+                break;
 
-        default:
-            assert(0);
-            break;
+            default:
+                assert(0);
+                break;
+        }
     }
+    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
     sp<Package> package = new Package(mAssetsPackage, packageId);
     mPackages.add(assetsPackage, package);
     mOrderedPackages.add(package);
@@ -4476,6 +4487,9 @@ static int getMinSdkVersion(const Bundle* bundle) {
  * attribute will be respected.
  */
 status_t ResourceTable::modifyForCompat(const Bundle* bundle) {
+    //[Rover12421]>
+    return NO_ERROR;
+    //[Rover12421]<
     const int minSdk = getMinSdkVersion(bundle);
     if (minSdk >= SDK_LOLLIPOP_MR1) {
         // Lollipop MR1 and up handles public attributes differently, no
@@ -4611,6 +4625,9 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
                                         const String16& resourceName,
                                         const sp<AaptFile>& target,
                                         const sp<XMLNode>& root) {
+    //[Rover12421]>
+    return NO_ERROR;
+    //[Rover12421]<
     const int minSdk = getMinSdkVersion(bundle);
     if (minSdk >= SDK_LOLLIPOP_MR1) {
         // Lollipop MR1 and up handles public attributes differently, no

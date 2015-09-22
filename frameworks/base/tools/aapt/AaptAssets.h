@@ -462,6 +462,8 @@ public:
 
 private:
     bool check_valid_symbol_name(const String8& symbol, const SourcePos& pos, const char* label) {
+        //[Rover12421]
+        return true;
         if (valid_symbol_name(symbol)) {
             return true;
         }

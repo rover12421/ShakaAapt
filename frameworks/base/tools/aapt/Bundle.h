@@ -65,6 +65,9 @@ public:
           mErrorOnMissingConfigEntry(false), mOutputTextSymbols(NULL),
           mSingleCrunchInputFile(NULL), mSingleCrunchOutputFile(NULL),
           mBuildSharedLibrary(false),
+          //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+          mForcedPackageId(-1),
+          //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
           mArgc(0), mArgv(NULL)
         {}
     ~Bundle(void) {}
@@ -204,6 +207,11 @@ public:
     bool getBuildSharedLibrary() const { return mBuildSharedLibrary; }
     void setBuildSharedLibrary(bool val) { mBuildSharedLibrary = val; }
 
+    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+    int getForcedPackageId() const { return mForcedPackageId; }
+    void setForcedPackageId(int val) { mForcedPackageId = val; }
+    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+
     /*
      * Set and get the file specification.
      *
@@ -322,6 +330,10 @@ private:
     bool        mBuildSharedLibrary;
     android::String8 mPlatformVersionCode;
     android::String8 mPlatformVersionName;
+
+    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+    int 	    mForcedPackageId;
+    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
 
     /* file specification */
     int         mArgc;
