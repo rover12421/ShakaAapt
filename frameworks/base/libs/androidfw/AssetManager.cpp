@@ -215,12 +215,17 @@ bool AssetManager::addAssetPath(const String8& path, int32_t* cookie)
     // Check that the path has an AndroidManifest.xml
     Asset* manifestAsset = const_cast<AssetManager*>(this)->openNonAssetInPathLocked(
             kAndroidManifest, Asset::ACCESS_BUFFER, ap);
-    if (manifestAsset == NULL) {
-        // This asset path does not contain any resources.
+    //[Rover12421]>
+//    if (manifestAsset == NULL) {
+//        // This asset path does not contain any resources.
+//        delete manifestAsset;
+//        return false;
+//    }
+//    delete manifestAsset;
+    if (manifestAsset != NULL) {
         delete manifestAsset;
-        return false;
     }
-    delete manifestAsset;
+    //[Rover12421]<
 
     mAssetPaths.add(ap);
 
