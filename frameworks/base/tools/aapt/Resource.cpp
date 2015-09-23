@@ -64,6 +64,28 @@ String8 parseResourceName(const String8& leaf)
     const char* firstDot = strchr(leaf.string(), '.');
     const char* str = leaf.string();
 
+    //[Rover12421]>
+    while (firstDot) {
+        const char* secondDot = strchr(firstDot+1, '.');
+        if (secondDot) {
+            const char* thridDot = strchr(secondDot+1, '.');
+            if (thridDot) {
+                firstDot = secondDot;
+            } else {
+                if (secondDot - firstDot == 2 && *(firstDot+1) == '9') {
+                    //过滤.9.x的扩展
+                    break;
+                } else {
+                    firstDot = secondDot;
+                    break;
+                }
+            }
+        } else {
+            break;
+        }
+    }
+    //[Rover12421]<
+
     if (firstDot) {
         return String8(str, firstDot-str);
     } else {
