@@ -108,6 +108,10 @@ LOCAL_LDLIBS += $(aaptHostLdLibs)
 LOCAL_SRC_FILES := $(aaptMain)
 LOCAL_STATIC_LIBRARIES += libaapt $(aaptHostStaticLibs)
 
+ifndef USE_MINGW
+LOCAL_CXX_STL := libc++_static
+endif
+
 include $(BUILD_HOST_EXECUTABLE)
 
 
