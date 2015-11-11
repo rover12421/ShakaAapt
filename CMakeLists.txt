@@ -71,11 +71,21 @@ set(LIB_LIBUTILS_commonSources
         ${LIB_LIBUTILS}/misc.cpp
 )
 
+set(LIB_EXPAT external/expat)
+set(LIB_EXPAT_commonSources
+    ${LIB_EXPAT}/lib/xmlparse.c
+    ${LIB_EXPAT}/lib/xmlrole.c
+    ${LIB_EXPAT}/lib/xmltok.c
+    ${LIB_EXPAT}/lib/xmltok_impl.c
+    ${LIB_EXPAT}/lib/xmltok_ns.c
+)
+
 set(SOURCE_FILES ${SOURCE_FILES}
         ${aaptMain}
         ${aaptSources}
         ${LIB_androidfw_commonSources}
         ${LIB_LIBUTILS_commonSources}
+        ${LIB_EXPAT_commonSources}
 )
 
 include_directories(${AAPTROOT})
@@ -83,6 +93,9 @@ include_directories(frameworks/base/include
         external/safe-iop/include
         system/core/include
         external/zlib
+        external/expat/lib
 )
+
+add_definitions(-DXML_TOK_IMPL_C)
 
 add_executable(ShakaAapt ${SOURCE_FILES})

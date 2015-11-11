@@ -273,6 +273,18 @@ sb_byteToAscii(const ENCODING *enc, const char *p)
 #define IS_INVALID_CHAR(enc, p, n) \
  (AS_NORMAL_ENCODING(enc)->isInvalid ## n(enc, p))
 
+//[Rover12421]>
+#ifdef IS_NAME_CHAR
+#undef IS_NAME_CHAR
+#endif
+#define IS_NAME_CHAR(enc, p, n) (1)
+
+#ifdef IS_INVALID_CHAR
+#undef IS_INVALID_CHAR
+#endif
+#define IS_INVALID_CHAR(enc, p, n) (0)
+//[Rover12421]<
+
 #ifdef XML_MIN_SIZE
 #define IS_NAME_CHAR_MINBPC(enc, p) \
  (AS_NORMAL_ENCODING(enc)->isNameMin(enc, p))
