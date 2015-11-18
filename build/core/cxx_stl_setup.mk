@@ -1,6 +1,6 @@
 #############################################################
 ## Set up flags based on LOCAL_CXX_STL.
-## Input variables: LOCAL_CXX_STL
+## Input variables: LOCAL_CXX_STL, my_prefix
 ## Output variables: My_cflags, my_c_includes, my_shared_libraries, etc.
 #############################################################
 
@@ -14,7 +14,7 @@ ifeq ($(strip $(LOCAL_CXX_STL)),default)
                 my_cxx_stl := libc++_static
             endif
 
-            ifdef USE_MINGW
+            ifeq ($($(my_prefix)OS),windows)
                 # libc++ is not supported on mingw.
                 my_cxx_stl := libstdc++
             endif
@@ -36,13 +36,25 @@ else
         # the two options use different names for the STLs.
         $(error $(LOCAL_PATH): $(LOCAL_MODULE): Must use LOCAL_NDK_STL_VARIANT rather than LOCAL_CXX_STL for NDK binaries)
     endif
+    ifdef LOCAL_IS_HOST_MODULE
+        ifeq ($($(my_prefix)OS),windows)
+            ifneq ($(filter $(my_cxx_stl),libc++ libc++_static),)
+                # libc++ is not supported on mingw.
+                my_cxx_stl := libstdc++
+            endif
+        endif
+    endif
 endif
 
 # Yes, this is actually what the clang driver does.
-HOST_linux_dynamic_gcclibs := -lgcc_s -lgcc -lc -lgcc_s -lgcc
-HOST_linux_static_gcclibs := -Wl,--start-group -lgcc -lgcc_eh -lc -Wl,--end-group
-HOST_darwin_dynamic_gcclibs := -lc -lSystem
-HOST_darwin_static_gcclibs := NO_STATIC_HOST_BINARIES_ON_DARWIN
+linux_dynamic_gcclibs := -lgcc_s -lgcc -lc -lgcc_s -lgcc
+linux_static_gcclibs := -Wl,--start-group -lgcc -lgcc_eh -lc -Wl,--end-group
+darwin_dynamic_gcclibs := -lc -lSystem
+darwin_static_gcclibs := NO_STATIC_HOST_BINARIES_ON_DARWIN
+windows_dynamic_gcclibs := \
+    -lmsvcr110 -lmingw32 -lgcc -lmoldname -lmingwex -lmsvcrt -ladvapi32 \
+    -lshell32 -luser32 -lkernel32 -lmingw32 -lgcc -lmoldname -lmingwex -lmsvcrt
+windows_static_gcclibs := NO_STATIC_HOST_BINARIES_ON_WINDOWS
 
 my_link_type := dynamic
 ifdef LOCAL_IS_HOST_MODULE
@@ -60,7 +72,6 @@ endif
 
 ifneq ($(filter $(my_cxx_stl),libc++ libc++_static),)
     my_cflags += -D_USING_LIBCXX
-    my_c_includes += external/libcxx/include
 
     # Note that the structure of this means that LOCAL_CXX_STL := libc++ will
     # use the static libc++ for static executables.
@@ -78,7 +89,7 @@ ifneq ($(filter $(my_cxx_stl),libc++ libc++_static),)
         my_cppflags += -nostdinc++
         my_ldflags += -nodefaultlibs
         my_ldlibs += -lpthread -lm
-        my_ldlibs += $($(my_prefix)$(HOST_OS)_$(my_link_type)_gcclibs)
+        my_ldlibs += $($($(my_prefix)OS)_$(my_link_type)_gcclibs)
     else
         ifeq (arm,$($(my_prefix)$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH))
             my_static_libraries += libunwind_llvm
@@ -108,7 +119,7 @@ else ifeq ($(my_cxx_stl),none)
     ifdef LOCAL_IS_HOST_MODULE
         my_cppflags += -nostdinc++
         my_ldflags += -nodefaultlibs
-        my_ldlibs += $($(my_prefix)$(HOST_OS)_$(my_link_type)_gcclibs)
+        my_ldlibs += $($($(my_prefix)OS)_$(my_link_type)_gcclibs)
     endif
 else
     $(error $(LOCAL_PATH): $(LOCAL_MODULE): $(my_cxx_stl) is not a supported STL.)

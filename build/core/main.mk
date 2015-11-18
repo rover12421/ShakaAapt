@@ -60,7 +60,10 @@ BUILD_SYSTEM := $(TOPDIR)build/core
 # This is the default target.  It must be the first declared target.
 .PHONY: droid
 DEFAULT_GOAL := droid
-$(DEFAULT_GOAL):
+$(DEFAULT_GOAL): droid_targets
+
+.PHONY: droid_targets
+droid_targets:
 
 # Used to force goals to build.  Only use for conditionally defined goals.
 .PHONY: FORCE
@@ -77,7 +80,8 @@ dont_bother_goals := clean clobber dataclean installclean \
     vendorimage-nodeps \
     ramdisk-nodeps \
     bootimage-nodeps \
-    recoveryimage-nodeps
+    recoveryimage-nodeps \
+    product-graph dump-products
 
 ifneq ($(filter $(dont_bother_goals), $(MAKECMDGOALS)),)
 dont_bother := true
@@ -92,9 +96,22 @@ include $(BUILD_SYSTEM)/help.mk
 # and host information.
 include $(BUILD_SYSTEM)/config.mk
 
-ifeq ($(USE_NINJA),true)
+relaunch_with_ninja :=
+ifneq ($(USE_NINJA),false)
+ifndef BUILDING_WITH_NINJA
+relaunch_with_ninja := true
+endif
+endif
+
+ifeq ($(relaunch_with_ninja),true)
+# Mark this is a ninja build.
+$(shell mkdir -p $(OUT_DIR) && touch $(OUT_DIR)/ninja_build)
 include build/core/ninja.mk
-else # !USE_NINJA
+else # !relaunch_with_ninja
+ifndef BUILDING_WITH_NINJA
+# Remove ninja build mark if it exists.
+$(shell rm -f $(OUT_DIR)/ninja_build)
+endif
 
 # Write the build number to a file so it can be read back in
 # without changing the command line every time.  Avoids rebuilds
@@ -163,7 +180,7 @@ javac_version_str := $(shell unset _JAVA_OPTIONS && javac -version 2>&1)
 ifneq ($(EXPERIMENTAL_USE_JAVA8),)
 required_version := "1.8.x"
 required_javac_version := "1.8"
-java_version := $(shell echo '$(java_version_str)' | grep 'openjdk .*[ "]1\.8[\. "$$]')
+java_version := $(shell echo '$(java_version_str)' | grep '[ "]1\.8[\. "$$]')
 javac_version := $(shell echo '$(javac_version_str)' | grep '[ "]1\.8[\. "$$]')
 else # default
 required_version := "1.7.x"
@@ -249,23 +266,7 @@ endif
 # These are the modifier targets that don't do anything themselves, but
 # change the behavior of the build.
 # (must be defined before including definitions.make)
-INTERNAL_MODIFIER_TARGETS := showcommands all incrementaljavac
-
-.PHONY: incrementaljavac
-incrementaljavac: ;
-
-# WARNING:
-# ENABLE_INCREMENTALJAVAC should NOT be enabled by default, because change of
-# a Java source file won't trigger rebuild of its dependent Java files.
-# You can only enable it by adding "incrementaljavac" to your make command line.
-# You are responsible for the correctness of the incremental build.
-# This may decrease incremental build time dramatically for large Java libraries,
-# such as core.jar, framework.jar, etc.
-ENABLE_INCREMENTALJAVAC :=
-ifneq (,$(filter incrementaljavac, $(MAKECMDGOALS)))
-ENABLE_INCREMENTALJAVAC := true
-MAKECMDGOALS := $(filter-out incrementaljavac, $(MAKECMDGOALS))
-endif
+INTERNAL_MODIFIER_TARGETS := showcommands all
 
 # EMMA_INSTRUMENT_STATIC merges the static emma library to each emma-enabled module.
 ifeq (true,$(EMMA_INSTRUMENT_STATIC))
@@ -312,6 +313,12 @@ TARGET_BUILD_JAVA_SUPPORT_LEVEL := platform
 # The pdk (Platform Development Kit) build
 include build/core/pdk_config.mk
 
+#
+# -----------------------------------------------------------------
+# Jack version configuration
+-include $(TOPDIR)prebuilts/sdk/tools/jack_versions.mk
+-include $(TOPDIR)prebuilts/sdk/tools/jack_for_module.mk
+
 # -----------------------------------------------------------------
 ###
 ### In this section we set up the things that are different
@@ -326,7 +333,7 @@ endif
 
 # Add build properties for ART. These define system properties used by installd
 # to pass flags to dex2oat.
-ADDITIONAL_BUILD_PROPERTIES += persist.sys.dalvik.vm.lib.2=libart
+ADDITIONAL_BUILD_PROPERTIES += persist.sys.dalvik.vm.lib.2=libart.so
 ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).variant=$(DEX2OAT_TARGET_CPU_VARIANT)
 ifneq ($(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES),)
   ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).features=$(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES)
@@ -419,7 +426,7 @@ ifdef is_sdk_build
 sdk_repo_goal := $(strip $(filter sdk_repo,$(MAKECMDGOALS)))
 MAKECMDGOALS := $(strip $(filter-out sdk_repo,$(MAKECMDGOALS)))
 
-ifneq ($(words $(filter-out $(INTERNAL_MODIFIER_TARGETS) checkbuild emulator_tests target-files-package,$(MAKECMDGOALS))),1)
+ifneq ($(words $(sort $(filter-out $(INTERNAL_MODIFIER_TARGETS) checkbuild emulator_tests target-files-package,$(MAKECMDGOALS)))),1)
 $(error The 'sdk' target may not be specified with any other targets)
 endif
 
@@ -465,24 +472,12 @@ ifeq ($(filter-out $(INTERNAL_MODIFIER_TARGETS),$(MAKECMDGOALS)),)
 $(INTERNAL_MODIFIER_TARGETS): $(DEFAULT_GOAL)
 endif
 
-# Bring in all modules that need to be built.
-ifeq ($(HOST_OS),windows)
-SDK_ONLY := true
-endif
-
-ifeq ($(SDK_ONLY),true)
-include $(TOPDIR)sdk/build/windows_sdk_whitelist.mk
-include $(TOPDIR)development/build/windows_sdk_whitelist.mk
-
-else	# !SDK_ONLY
 #
 # Typical build; include any Android.mk files we can find.
 #
 subdirs := $(TOP)
 
 FULL_BUILD := true
-
-endif	# !SDK_ONLY
 
 # Before we go and include all of the module makefiles, stash away
 # the PRODUCT_* values so that later we can verify they are not modified.
@@ -510,6 +505,7 @@ NOTICE-TARGET-%: ;
 # A helper goal printing out install paths
 .PHONY: GET-INSTALL-PATH
 GET-INSTALL-PATH:
+	@echo "Install paths for modules in $(ONE_SHOT_MAKEFILE):"
 	@$(foreach m, $(ALL_MODULES), $(if $(ALL_MODULES.$(m).INSTALLED), \
 		echo 'INSTALL-PATH: $(m) $(ALL_MODULES.$(m).INSTALLED)';))
 
@@ -523,7 +519,7 @@ ifneq ($(dont_bother),true)
 # Can't use first-makefiles-under here because
 # --mindepth=2 makes the prunes not work.
 subdir_makefiles := \
-	$(shell build/tools/findleaves.py --prune=$(OUT_DIR) --prune=.repo --prune=.git $(subdirs) Android.mk)
+	$(shell build/tools/findleaves.py $(FIND_LEAVES_EXCLUDES) $(subdirs) Android.mk)
 
 $(foreach mk, $(subdir_makefiles), $(info including $(mk) ...)$(eval include $(mk)))
 
@@ -595,6 +591,8 @@ $(strip $(foreach m,$(1),\
     $(m))))
 endef
 
+# If a module is for a cross host os, the required modules must be for
+# that OS too.
 # If a module is built for 32-bit, the required modules must be 32-bit too;
 # Otherwise if the module is an exectuable or shared library,
 #   the required modules must be 64-bit;
@@ -602,6 +600,8 @@ endef
 $(foreach m,$(ALL_MODULES),\
   $(eval r := $(ALL_MODULES.$(m).REQUIRED))\
   $(if $(r),\
+    $(if $(ALL_MODULES.$(m).FOR_HOST_CROSS),\
+      $(eval r := $(addprefix host_cross_,$(r))))\
     $(if $(ALL_MODULES.$(m).FOR_2ND_ARCH),\
       $(eval r_r := $(call get-32-bit-modules-if-we-can,$(r))),\
       $(if $(filter EXECUTABLES SHARED_LIBRARIES,$(ALL_MODULES.$(m).CLASS)),\
@@ -624,32 +624,40 @@ $(foreach m,$(ALL_MODULES), \
     $(eval r := $(call module-installed-files,$(r))) \
     $(eval t_m := $(filter $(TARGET_OUT_ROOT)/%, $(ALL_MODULES.$(m).INSTALLED))) \
     $(eval h_m := $(filter $(HOST_OUT_ROOT)/%, $(ALL_MODULES.$(m).INSTALLED))) \
+    $(eval hc_m := $(filter $(HOST_CROSS_OUT_ROOT)/%, $(ALL_MODULES.$(m).INSTALLED))) \
     $(eval t_r := $(filter $(TARGET_OUT_ROOT)/%, $(r))) \
     $(eval h_r := $(filter $(HOST_OUT_ROOT)/%, $(r))) \
+    $(eval hc_r := $(filter $(HOST_CROSS_OUT_ROOT)/%, $(r))) \
     $(eval t_m := $(filter-out $(t_r), $(t_m))) \
     $(eval h_m := $(filter-out $(h_r), $(h_m))) \
+    $(eval hc_m := $(filter-out $(hc_r), $(hc_m))) \
     $(if $(t_m), $(eval $(call add-required-deps, $(t_m),$(t_r)))) \
     $(if $(h_m), $(eval $(call add-required-deps, $(h_m),$(h_r)))) \
+    $(if $(hc_m), $(eval $(call add-required-deps, $(hc_m),$(hc_r)))) \
    ) \
  )
 
 t_m :=
 h_m :=
+hc_m :=
 t_r :=
 h_r :=
+hc_r :=
 
 # Establish the dependecies on the shared libraries.
 # It also adds the shared library module names to ALL_MODULES.$(m).REQUIRED,
 # so they can be expanded to product_MODULES later.
-# $(1): TARGET_ or HOST_.
+# $(1): TARGET_ or HOST_ or HOST_CROSS_.
 # $(2): non-empty for 2nd arch.
+# $(3): non-empty for host cross compile.
 define resolve-shared-libs-depes
 $(foreach m,$($(if $(2),$($(1)2ND_ARCH_VAR_PREFIX))$(1)DEPENDENCIES_ON_SHARED_LIBRARIES),\
   $(eval p := $(subst :,$(space),$(m)))\
   $(eval mod := $(firstword $(p)))\
   $(eval deps := $(subst $(comma),$(space),$(lastword $(p))))\
   $(if $(2),$(eval deps := $(addsuffix $($(1)2ND_ARCH_MODULE_SUFFIX),$(deps))))\
-  $(eval r := $(filter $($(1)OUT_ROOT)/%,$(call module-installed-files,\
+  $(if $(3),$(eval deps := $(addprefix host_cross_,$(deps))))\
+  $(eval r := $(filter $($(1)OUT)/%,$(call module-installed-files,\
     $(deps))))\
   $(eval $(call add-required-deps,$(word 2,$(p)),$(r)))\
   $(eval ALL_MODULES.$(mod).REQUIRED += $(deps)))
@@ -662,6 +670,9 @@ endif
 $(call resolve-shared-libs-depes,HOST_)
 ifdef HOST_2ND_ARCH
 $(call resolve-shared-libs-depes,HOST_,true)
+endif
+ifdef HOST_CROSS_OS
+$(call resolve-shared-libs-depes,HOST_CROSS_,,true)
 endif
 
 m :=
@@ -761,9 +772,14 @@ endif
 #$(error filtered out
 #           $(filter-out $(modules_to_install),$(old_modules_to_install)))
 
-# Don't include any GNU targets in the SDK.  It's ok (and necessary)
-# to build the host tools, but nothing that's going to be installed
-# on the target (including static libraries).
+# Don't include any GNU General Public License shared objects or static
+# libraries in SDK images.  GPL executables (not static/dynamic libraries)
+# are okay if they don't link against any closed source libraries (directly
+# or indirectly)
+
+# It's ok (and necessary) to build the host tools, but nothing that's
+# going to be installed on the target (including static libraries).
+
 ifdef is_sdk_build
   target_gnu_MODULES := \
               $(filter \
@@ -771,6 +787,7 @@ ifdef is_sdk_build
                       $(TARGET_OUT)/% \
                       $(TARGET_OUT_DATA)/%, \
                               $(sort $(call get-tagged-modules,gnu)))
+  target_gnu_MODULES := $(filter-out $(TARGET_OUT_EXECUTABLES)/%,$(target_gnu_MODULES))
   $(info Removing from sdk:)$(foreach d,$(target_gnu_MODULES),$(info : $(d)))
   modules_to_install := \
               $(filter-out $(target_gnu_MODULES),$(modules_to_install))
@@ -843,12 +860,9 @@ files: prebuilt \
 # -------------------------------------------------------------------
 
 .PHONY: checkbuild
-checkbuild: $(modules_to_check)
-ifeq (true,$(ANDROID_BUILD_EVERYTHING_BY_DEFAULT)$(filter $(MAKECMDGOALS),checkbuild))
+checkbuild: $(modules_to_check) droid_targets
+ifeq (true,$(ANDROID_BUILD_EVERYTHING_BY_DEFAULT))
 droid: checkbuild
-else
-# ANDROID_BUILD_EVERYTHING_BY_DEFAULT not set, or checkbuild is one of the cmd goals.
-checkbuild: droid
 endif
 
 .PHONY: ramdisk
@@ -903,7 +917,8 @@ droidcore: files \
 	$(INSTALLED_USERDATAIMAGE_TARGET) \
 	$(INSTALLED_CACHEIMAGE_TARGET) \
 	$(INSTALLED_VENDORIMAGE_TARGET) \
-	$(INSTALLED_FILES_FILE)
+	$(INSTALLED_FILES_FILE) \
+	$(INSTALLED_FILES_FILE_VENDOR)
 
 # dist_files only for putting your library into the dist directory with a full build.
 .PHONY: dist_files
@@ -925,7 +940,9 @@ ifneq ($(TARGET_BUILD_APPS),)
   # For uninstallable modules such as static Java library, we have to dist the built file,
   # as <module_name>.<suffix>
   apps_only_dist_built_files := $(foreach m,$(unbundled_build_modules),$(if $(ALL_MODULES.$(m).INSTALLED),,\
-      $(if $(ALL_MODULES.$(m).BUILT),$(ALL_MODULES.$(m).BUILT):$(m)$(suffix $(ALL_MODULES.$(m).BUILT)))))
+      $(if $(ALL_MODULES.$(m).BUILT),$(ALL_MODULES.$(m).BUILT):$(m)$(suffix $(ALL_MODULES.$(m).BUILT)))\
+      $(if $(ALL_MODULES.$(m).AAR),$(ALL_MODULES.$(m).AAR):$(m).aar)\
+      ))
   $(call dist-for-goals,apps_only, $(apps_only_dist_built_files))
 
   ifeq ($(EMMA_INSTRUMENT),true)
@@ -943,7 +960,7 @@ ifneq ($(TARGET_BUILD_APPS),)
 .PHONY: apps_only
 apps_only: $(unbundled_build_modules)
 
-droid: apps_only
+droid_targets: apps_only
 
 # Combine the NOTICE files for a apps_only build
 $(eval $(call combine-notice-files, \
@@ -958,8 +975,10 @@ else # TARGET_BUILD_APPS
   $(call dist-for-goals, droidcore, \
     $(INTERNAL_UPDATE_PACKAGE_TARGET) \
     $(INTERNAL_OTA_PACKAGE_TARGET) \
+    $(BUILT_OTATOOLS_PACKAGE) \
     $(SYMBOLS_ZIP) \
     $(INSTALLED_FILES_FILE) \
+    $(INSTALLED_FILES_FILE_VENDOR) \
     $(INSTALLED_BUILD_PROP_TARGET) \
     $(BUILT_TARGET_FILES_PACKAGE) \
     $(INSTALLED_ANDROID_INFO_TXT_TARGET) \
@@ -987,7 +1006,7 @@ else # TARGET_BUILD_APPS
   endif
 
 # Building a full system-- the default is to build droidcore
-droid: droidcore dist_files
+droid_targets: droidcore dist_files
 
 endif # TARGET_BUILD_APPS
 
@@ -1070,4 +1089,4 @@ showcommands:
 .PHONY: nothing
 nothing:
 	@echo Successfully read the makefiles.
-endif # !USE_NINJA
+endif # !relaunch_with_ninja

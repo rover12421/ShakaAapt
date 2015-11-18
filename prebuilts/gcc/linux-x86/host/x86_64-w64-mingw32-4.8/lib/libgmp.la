@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib'
+libdir='/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib'

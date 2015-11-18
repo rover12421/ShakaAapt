@@ -21,6 +21,7 @@
 PROGNAME=$(basename $0)
 PROGDIR=$(dirname $0)
 PROGDIR=$(cd $PROGDIR && pwd)
+PATCHES_DIR=$PROGDIR/toolchain-patches
 
 HELP=
 VERBOSE=1
@@ -133,7 +134,7 @@ GMP_URL=http://ftp.gnu.org/gnu/gmp/
 
 MPFR_VERSION=3.1.1
 MPC_VERSION=1.0.1
-BINUTILS_VERSION=2.22
+BINUTILS_VERSION=2.25
 GCC_VERSION=4.8.1
 
 # Need at least revision 5166
@@ -384,6 +385,16 @@ download_package ()
                 ;;
         esac
         fail_panic "Can't uncompress $ARCHIVE_DIR/$PKG_NAME"
+
+        LOCAL_PATCHES_DIR="$PATCHES_DIR/$PKG_BASENAME"
+        if [ -d "$LOCAL_PATCHES_DIR" ] ; then
+            PATCHES=$(find "$LOCAL_PATCHES_DIR" -name "*.patch" | sort)
+            for PATCH in $PATCHES; do
+                echo "Patching $PKG_BASENAME with $PATCH"
+                (cd $SRC_DIR/$PKG_BASENAME && run patch -p1 < $PATCH)
+                fail_panic "Can't patch $SRC_DIR with $PATCH"
+            done
+        fi
     fi
 }
 
@@ -455,9 +466,9 @@ if [ ! -d $MINGW_W64_SRC ]; then
     MINGW64_SVN_URL=https://svn.code.sf.net/p/mingw-w64/code/trunk$MINGW_W64_REVISION
     echo "Checking out $MINGW64_SVN_URL $MINGW_W64_SRC"
     run svn co $MINGW64_SVN_URL $MINGW_W64_SRC
-    PATCHES_DIR="$PROGDIR/toolchain-patches-host/mingw-w64"
-    if [ -d "$PATCHES_DIR" ] ; then
-        PATCHES=$(find "$PATCHES_DIR" -name "*.patch" | sort)
+    LOCAL_PATCHES_DIR="$PATCHES_DIR/mingw-w64"
+    if [ -d "$LOCAL_PATCHES_DIR" ] ; then
+        PATCHES=$(find "$LOCAL_PATCHES_DIR" -name "*.patch" | sort)
         for PATCH in $PATCHES; do
             echo "Patching mingw-w64-$MINGW_W64_REVISION with $PATCH"
             (cd $MINGW_W64_SRC && run patch -p0 < $PATCH)
@@ -529,6 +540,34 @@ build_host_package ()
     fi
 }
 
+build_binutils_package ()
+{
+    local PKGNAME=$1
+    shift
+
+    if [ ! -f $STAMP_DIR/$PKGNAME ]; then
+        (
+            mkdir -p $BUILD_DIR/$PKGNAME &&
+            cd $BUILD_DIR/$PKGNAME &&
+            setup_build_env $HOST_BINPREFIX &&
+            log "$PKGNAME: Configuring" &&
+            run $SRC_DIR/$PKGNAME/configure "$@"
+            fail_panic "Can't configure $PKGNAME !!"
+
+            log "$PKGNAME: Building" &&
+            run make -j$JOBS MAKEINFO=true
+            fail_panic "Can't build $PKGNAME !!"
+
+            log "$PKGNAME: Installing" &&
+            run make install MAKEINFO=true
+            fail_panic "Can't install $PKGNAME"
+        ) || exit 1
+        touch $STAMP_DIR/$PKGNAME
+    fi
+}
+
+
+
 export ABI=$HOST_BITS
 BASE_HOST_OPTIONS="--prefix=$INSTALL_DIR --disable-shared"
 build_host_package gmp-$GMP_VERSION $BASE_HOST_OPTIONS
@@ -548,7 +587,7 @@ fi
 
 var_append BINUTILS_CONFIGURE_OPTIONS "--with-sysroot=$INSTALL_DIR"
 
-build_host_package binutils-$BINUTILS_VERSION $BINUTILS_CONFIGURE_OPTIONS
+build_binutils_package binutils-$BINUTILS_VERSION $BINUTILS_CONFIGURE_OPTIONS
 
 build_mingw_tools ()
 {

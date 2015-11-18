@@ -123,6 +123,14 @@ bool parse(const String8& str, ConfigDescription* out) {
         part = parts[index].string();
     }
 
+    if (parseScreenRound(part, &config)) {
+        index++;
+        if (index == N) {
+            goto success;
+        }
+        part = parts[index].string();
+    }
+
     if (parseOrientation(part, &config)) {
         index++;
         if (index == N) {
@@ -236,18 +244,14 @@ bool parseCommaSeparatedList(const String8& str, std::set<ConfigDescription>* ou
 }
 
 void applyVersionForCompatibility(ConfigDescription* config) {
-    //[Rover12421]>
-    /**
-     * Prevent implicit addition of version qualifiers
-     */
-    return;
-    //[Rover12421]<
     if (config == NULL) {
         return;
     }
 
     uint16_t minSdk = 0;
-    if (config->density == ResTable_config::DENSITY_ANY) {
+    if (config->screenLayout2 & ResTable_config::MASK_SCREENROUND) {
+        minSdk = SDK_MNC;
+    } else if (config->density == ResTable_config::DENSITY_ANY) {
         minSdk = SDK_LOLLIPOP;
     } else if (config->smallestScreenWidthDp != ResTable_config::SCREENWIDTH_ANY
             || config->screenWidthDp != ResTable_config::SCREENWIDTH_ANY
@@ -290,11 +294,7 @@ bool parseMcc(const char* name, ResTable_config* out) {
         c++;
     }
     if (*c != 0) return false;
-    //[Rover12421]>
-    //if (c-val != 3) return false;
-    if (c-val != 3 && c-val != 4) return false;
-    //[Rover12421]<
-
+    if (c-val != 3) return false;
 
     int d = atoi(val);
     if (d != 0) {
@@ -324,10 +324,7 @@ bool parseMnc(const char* name, ResTable_config* out) {
         c++;
     }
     if (*c != 0) return false;
-    //[Rover12421]>
-    //if (c-val == 0 || c-val > 3) return false;
-    if (c-val == 0 || c-val > 4) return false;
-    //[Rover12421]<
+    if (c-val == 0 || c-val > 3) return false;
 
     if (out) {
         out->mnc = atoi(val);
@@ -408,7 +405,26 @@ bool parseScreenLayoutLong(const char* name, ResTable_config* out) {
                 | ResTable_config::SCREENLONG_NO;
         return true;
     }
+    return false;
+}
 
+bool parseScreenRound(const char* name, ResTable_config* out) {
+    if (strcmp(name, kWildcardName) == 0) {
+        if (out) out->screenLayout2 =
+                (out->screenLayout2&~ResTable_config::MASK_SCREENROUND)
+                | ResTable_config::SCREENROUND_ANY;
+        return true;
+    } else if (strcmp(name, "round") == 0) {
+        if (out) out->screenLayout2 =
+                (out->screenLayout2&~ResTable_config::MASK_SCREENROUND)
+                | ResTable_config::SCREENROUND_YES;
+        return true;
+    } else if (strcmp(name, "notround") == 0) {
+        if (out) out->screenLayout2 =
+                (out->screenLayout2&~ResTable_config::MASK_SCREENROUND)
+                | ResTable_config::SCREENROUND_NO;
+        return true;
+    }
     return false;
 }
 
@@ -462,30 +478,6 @@ bool parseUiModeType(const char* name, ResTable_config* out) {
               | ResTable_config::UI_MODE_TYPE_WATCH;
         return true;
     }
-    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-    else if (strcmp(name, "smallui") == 0) {
-        if (out) out->uiMode =
-                         (out->uiMode&~ResTable_config::MASK_UI_MODE_TYPE)
-                         | 0xc;
-        return true;
-    } else if (strcmp(name, "mediumui") == 0) {
-        if (out) out->uiMode =
-                         (out->uiMode&~ResTable_config::MASK_UI_MODE_TYPE)
-                         | 0xd;
-        return true;
-    } else if (strcmp(name, "largeui") == 0) {
-        if (out) out->uiMode =
-                         (out->uiMode&~ResTable_config::MASK_UI_MODE_TYPE)
-                         | 0xe;
-        return true;
-    } else if (strcmp(name, "hugeui") == 0) {
-        if (out) out->uiMode = 0xf;
-        return true;
-    } else if (strcmp(name, "godzillaui") == 0) {
-        if (out) out->uiMode = 0xb;
-        return true;
-    }
-    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
 
     return false;
 }

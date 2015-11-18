@@ -52,9 +52,9 @@ struct EnableAndroidNativeBuffersParams {
     OMX_BOOL enable;
 };
 
-// A pointer to this struct is passed to OMX_SetParameter() when the extension
-// index "OMX.google.android.index.storeMetaDataInBuffers"
-// is given.
+// A pointer to this struct is passed to OMX_SetParameter() when the extension index
+// "OMX.google.android.index.storeMetaDataInBuffers" or
+// "OMX.google.android.index.storeANWBufferInMetadata" is given.
 //
 // When meta data is stored in the video buffers passed between OMX clients
 // and OMX components, interpretation of the buffer data is up to the
@@ -62,19 +62,33 @@ struct EnableAndroidNativeBuffersParams {
 // some information helpful for the receiver to locate the actual data.
 // The buffer receiver thus needs to know how to interpret what is stored
 // in these buffers, with mechanisms pre-determined externally. How to
-// interpret the meta data is outside of the scope of this method.
+// interpret the meta data is outside of the scope of this parameter.
 //
-// Currently, this is specifically used to pass meta data from video source
-// (camera component, for instance) to video encoder to avoid memcpying of
-// input video frame data. To do this, bStoreMetaData is set to OMX_TRUE.
-// If bStoreMetaData is set to false, real YUV frame data will be stored
-// in the buffers. In addition, if no OMX_SetParameter() call is made
-// with the corresponding extension index, real YUV data is stored
-// in the buffers.
+// Currently, this is used to pass meta data from video source (camera component, for instance) to
+// video encoder to avoid memcpying of input video frame data, as well as to pass dynamic output
+// buffer to video decoder. To do this, bStoreMetaData is set to OMX_TRUE.
 //
-// For video decoder output port, the metadata buffer layout is defined below.
+// If bStoreMetaData is set to false, real YUV frame data will be stored in input buffers, and
+// the output buffers contain either real YUV frame data, or are themselves native handles as
+// directed by enable/use-android-native-buffer parameter settings.
+// In addition, if no OMX_SetParameter() call is made on a port with the corresponding extension
+// index, the component should not assume that the client is not using metadata mode for the port.
 //
-// Metadata buffers are registered with the component using UseBuffer calls.
+// If the component supports this using the "OMX.google.android.index.storeANWBufferInMetadata"
+// extension and bStoreMetaData is set to OMX_TRUE, data is passed using the VideoNativeMetadata
+// layout as defined below. Each buffer will be accompanied by a fence. The fence must signal
+// before the buffer can be used (e.g. read from or written into). When returning such buffer to
+// the client, component must provide a new fence that must signal before the returned buffer can
+// be used (e.g. read from or written into). The component owns the incoming fenceFd, and must close
+// it when fence has signaled. The client will own and close the returned fence file descriptor.
+//
+// If the component supports this using the "OMX.google.android.index.storeMetaDataInBuffers"
+// extension and bStoreMetaData is set to OMX_TRUE, data is passed using VideoGrallocMetadata
+// (the layout of which is the VideoGrallocMetadata defined below). Camera input can be also passed
+// as "CameraSource", the layout of which is vendor dependent.
+//
+// Metadata buffers are registered with the component using UseBuffer calls, or can be allocated
+// by the component for encoder-metadata-output buffers.
 struct StoreMetaDataInBuffersParams {
     OMX_U32 nSize;
     OMX_VERSIONTYPE nVersion;
@@ -84,9 +98,26 @@ struct StoreMetaDataInBuffersParams {
 
 // Meta data buffer layout used to transport output frames to the decoder for
 // dynamic buffer handling.
-struct VideoDecoderOutputMetaData {
-  MetadataBufferType eType;
-  buffer_handle_t pHandle;
+struct VideoGrallocMetadata {
+    MetadataBufferType eType;               // must be kMetadataBufferTypeGrallocSource
+#ifdef OMX_ANDROID_COMPILE_AS_32BIT_ON_64BIT_PLATFORMS
+    OMX_PTR pHandle;
+#else
+    buffer_handle_t pHandle;
+#endif
+};
+
+// Legacy name for VideoGrallocMetadata struct.
+struct VideoDecoderOutputMetaData : public VideoGrallocMetadata {};
+
+struct VideoNativeMetadata {
+    MetadataBufferType eType;               // must be kMetadataBufferTypeANWBuffer
+#ifdef OMX_ANDROID_COMPILE_AS_32BIT_ON_64BIT_PLATFORMS
+    OMX_PTR pBuffer;
+#else
+    struct ANativeWindowBuffer* pBuffer;
+#endif
+    int nFenceFd;                           // -1 if unused
 };
 
 // A pointer to this struct is passed to OMX_SetParameter() when the extension
@@ -173,17 +204,17 @@ struct MediaImage {
     };
 
     Type mType;
-    size_t mNumPlanes;              // number of planes
-    size_t mWidth;                  // width of largest plane (unpadded, as in nFrameWidth)
-    size_t mHeight;                 // height of largest plane (unpadded, as in nFrameHeight)
-    size_t mBitDepth;               // useable bit depth
+    uint32_t mNumPlanes;              // number of planes
+    uint32_t mWidth;                  // width of largest plane (unpadded, as in nFrameWidth)
+    uint32_t mHeight;                 // height of largest plane (unpadded, as in nFrameHeight)
+    uint32_t mBitDepth;               // useable bit depth
     struct PlaneInfo {
-        size_t mOffset;             // offset of first pixel of the plane in bytes
-                                    // from buffer offset
-        size_t mColInc;             // column increment in bytes
-        size_t mRowInc;             // row increment in bytes
-        size_t mHorizSubsampling;   // subsampling compared to the largest plane
-        size_t mVertSubsampling;    // subsampling compared to the largest plane
+        uint32_t mOffset;             // offset of first pixel of the plane in bytes
+                                      // from buffer offset
+        uint32_t mColInc;             // column increment in bytes
+        uint32_t mRowInc;             // row increment in bytes
+        uint32_t mHorizSubsampling;   // subsampling compared to the largest plane
+        uint32_t mVertSubsampling;    // subsampling compared to the largest plane
     };
     PlaneInfo mPlane[MAX_NUM_PLANES];
 };

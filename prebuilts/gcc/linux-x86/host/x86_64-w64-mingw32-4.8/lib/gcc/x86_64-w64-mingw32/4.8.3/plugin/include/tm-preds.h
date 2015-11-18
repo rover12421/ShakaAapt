@@ -1,5 +1,5 @@
 /* Generated automatically by the program 'build/genpreds'
-   from the machine description file '/tmp/build-mingw64-toolchain-digit/src/gcc-4.8.3/gcc/config/i386/i386.md'.  */
+   from the machine description file '/tmp/build-mingw64-toolchain-joshualang/src/gcc-4.8.3/gcc/config/i386/i386.md'.  */
 
 #ifndef GCC_TM_PREDS_H
 #define GCC_TM_PREDS_H

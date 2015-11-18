@@ -1,13 +1,8 @@
 ## Clang configurations.
 
-# WITHOUT_CLANG covers both HOST and TARGET
-ifeq ($(WITHOUT_CLANG),true)
-WITHOUT_TARGET_CLANG := true
-WITHOUT_HOST_CLANG := true
-endif
-
-LLVM_PREBUILTS_VERSION := 3.6
-LLVM_PREBUILTS_PATH := prebuilts/clang/$(BUILD_OS)-x86/host/$(LLVM_PREBUILTS_VERSION)/bin
+LLVM_PREBUILTS_VERSION := 3.8
+LLVM_PREBUILTS_BASE := prebuilts/clang/host
+LLVM_PREBUILTS_PATH := $(LLVM_PREBUILTS_BASE)/$(BUILD_OS)-x86/$(LLVM_PREBUILTS_VERSION)/bin
 LLVM_RTLIB_PATH := $(LLVM_PREBUILTS_PATH)/../lib/clang/$(LLVM_PREBUILTS_VERSION)/lib/linux/
 
 CLANG := $(LLVM_PREBUILTS_PATH)/clang$(BUILD_EXECUTABLE_SUFFIX)
@@ -33,7 +28,8 @@ CLANG_CONFIG_EXTRA_CFLAGS += \
   -Werror=int-conversion
 
 # Disable overly aggressive warning for macros defined with a leading underscore
-# This happens in AndroidConfig.h, which is included nearly everywhere.
+# This used to happen in AndroidConfig.h, which was included everywhere.
+# TODO: can we remove this now?
 CLANG_CONFIG_EXTRA_CFLAGS += \
   -Wno-reserved-id-macro
 
@@ -52,6 +48,11 @@ CLANG_CONFIG_EXTRA_CFLAGS += \
 CLANG_CONFIG_EXTRA_CPPFLAGS += \
   -Wno-inconsistent-missing-override
 
+# Force clang to always output color diagnostics.  Ninja will strip the ANSI
+# color codes if it is not running in a terminal.
+CLANG_CONFIG_EXTRA_CFLAGS += \
+  -fcolor-diagnostics
+
 CLANG_CONFIG_UNKNOWN_CFLAGS := \
   -finline-functions \
   -finline-limit=64 \
@@ -61,6 +62,8 @@ CLANG_CONFIG_UNKNOWN_CFLAGS := \
   -fno-tree-sra \
   -fprefetch-loop-arrays \
   -funswitch-loops \
+  -Werror=unused-but-set-parameter \
+  -Werror=unused-but-set-variable \
   -Wmaybe-uninitialized \
   -Wno-error=clobbered \
   -Wno-error=maybe-uninitialized \
@@ -75,13 +78,21 @@ CLANG_CONFIG_UNKNOWN_CFLAGS := \
   -Wno-unused-but-set-variable \
   -Wno-unused-local-typedefs \
   -Wunused-but-set-parameter \
-  -Wunused-but-set-variable
+  -Wunused-but-set-variable \
+  -fdiagnostics-color \
+  -fdebug-prefix-map=/proc/self/cwd=
 
 # Clang flags for all host rules
 CLANG_CONFIG_HOST_EXTRA_ASFLAGS :=
 CLANG_CONFIG_HOST_EXTRA_CFLAGS :=
 CLANG_CONFIG_HOST_EXTRA_CPPFLAGS :=
 CLANG_CONFIG_HOST_EXTRA_LDFLAGS :=
+
+# Clang flags for all host cross rules
+CLANG_CONFIG_HOST_CROSS_EXTRA_ASFLAGS :=
+CLANG_CONFIG_HOST_CROSS_EXTRA_CFLAGS :=
+CLANG_CONFIG_HOST_CROSS_EXTRA_CPPFLAGS :=
+CLANG_CONFIG_HOST_CROSS_EXTRA_LDFLAGS :=
 
 # Clang flags for all target rules
 CLANG_CONFIG_TARGET_EXTRA_ASFLAGS :=
@@ -123,6 +134,10 @@ include $(BUILD_SYSTEM)/clang/HOST_$(HOST_ARCH).mk
 ifdef HOST_2ND_ARCH
 clang_2nd_arch_prefix := $(HOST_2ND_ARCH_VAR_PREFIX)
 include $(BUILD_SYSTEM)/clang/HOST_$(HOST_2ND_ARCH).mk
+endif
+
+ifdef HOST_CROSS_OS
+include $(BUILD_SYSTEM)/clang/HOST_CROSS_$(HOST_CROSS_OS).mk
 endif
 
 # TARGET config

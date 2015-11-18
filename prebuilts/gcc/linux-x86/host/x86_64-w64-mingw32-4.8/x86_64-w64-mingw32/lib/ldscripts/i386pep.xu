@@ -1,6 +1,10 @@
 /* Script for ld -Ur: link w/out relocation, do create constructors */
+/* Copyright (C) 2014 Free Software Foundation, Inc.
+   Copying and distribution of this script, with or without modification,
+   are permitted in any medium without royalty provided the copyright
+   notice and this notice are preserved.  */
 OUTPUT_FORMAT(pe-x86-64)
-SEARCH_DIR("=/usr/local/lib"); SEARCH_DIR("=/lib"); SEARCH_DIR("=/usr/lib");
+SEARCH_DIR("=/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/x86_64-w64-mingw32/lib"); SEARCH_DIR("=/usr/local/lib"); SEARCH_DIR("=/lib"); SEARCH_DIR("=/usr/lib");
 SECTIONS
 {
   .text  :
@@ -68,6 +72,10 @@ SECTIONS
   {
     /* ___crt_xl_end__ is defined in the TLS Directory support code */
   }
+  /* Windows TLS expects .tls$AAA to be at the start and .tls$ZZZ to be
+     at the end of the .tls section.  This is important because _tls_start MUST
+     be at the beginning of the section to enable SECREL32 relocations with TLS
+     data.  */
   .tls  :
   {
   }
@@ -75,7 +83,7 @@ SECTIONS
   {
     /* end is deprecated, don't use it */
   }
-  .rsrc  :
+  .rsrc  : SUBALIGN(4)
   {
     *(.rsrc)
   }
@@ -100,72 +108,140 @@ SECTIONS
   {
     *(.debug_aranges)
   }
+  .zdebug_aranges   :
+  {
+    *(.zdebug_aranges)
+  }
   .debug_pubnames   :
   {
     *(.debug_pubnames)
+  }
+  .zdebug_pubnames   :
+  {
+    *(.zdebug_pubnames)
   }
   .debug_pubtypes   :
   {
     *(.debug_pubtypes)
   }
+  .zdebug_pubtypes   :
+  {
+    *(.zdebug_pubtypes)
+  }
   /* DWARF 2.  */
   .debug_info   :
   {
-    *(.debug_info) *(.gnu.linkonce.wi.*)
+    *(.debug_info)
+  }
+  .zdebug_info   :
+  {
+    *(.zdebug_info)
   }
   .debug_abbrev   :
   {
     *(.debug_abbrev)
   }
+  .zdebug_abbrev   :
+  {
+    *(.zdebug_abbrev)
+  }
   .debug_line   :
   {
     *(.debug_line)
   }
+  .zdebug_line   :
+  {
+    *(.zdebug_line)
+  }
   .debug_frame   :
   {
-    *(.debug_frame*)
+    *(.debug_frame)
+  }
+  .zdebug_frame   :
+  {
+    *(.zdebug_frame)
   }
   .debug_str   :
   {
     *(.debug_str)
   }
+  .zdebug_str   :
+  {
+    *(.zdebug_str)
+  }
   .debug_loc   :
   {
     *(.debug_loc)
   }
+  .zdebug_loc   :
+  {
+    *(.zdebug_loc)
+  }
   .debug_macinfo   :
   {
     *(.debug_macinfo)
+  }
+  .zdebug_macinfo   :
+  {
+    *(.zdebug_macinfo)
   }
   /* SGI/MIPS DWARF 2 extensions.  */
   .debug_weaknames   :
   {
     *(.debug_weaknames)
   }
+  .zdebug_weaknames   :
+  {
+    *(.zdebug_weaknames)
+  }
   .debug_funcnames   :
   {
     *(.debug_funcnames)
+  }
+  .zdebug_funcnames   :
+  {
+    *(.zdebug_funcnames)
   }
   .debug_typenames   :
   {
     *(.debug_typenames)
   }
+  .zdebug_typenames   :
+  {
+    *(.zdebug_typenames)
+  }
   .debug_varnames   :
   {
     *(.debug_varnames)
   }
+  .zdebug_varnames   :
+  {
+    *(.zdebug_varnames)
+  }
   .debug_macro   :
   {
     *(.debug_macro)
+  }
+  .zdebug_macro   :
+  {
+    *(.zdebug_macro)
   }
   /* DWARF 3.  */
   .debug_ranges   :
   {
     *(.debug_ranges)
   }
+  .zdebug_ranges   :
+  {
+    *(.zdebug_ranges)
+  }
   /* DWARF 4.  */
   .debug_types   :
   {
-    *(.debug_types) *(.gnu.linkonce.wt.*)
+    *(.debug_types)
+  }
+  .zdebug_types   :
+  {
+    *(.zdebug_types)
   }
 }

@@ -44,7 +44,10 @@ include $(BUILD_SYSTEM)/binary.mk
 relocation_packer_input := $(linked_module)
 relocation_packer_output := $(intermediates)/PACKED/$(my_built_module_stem)
 
-my_pack_module_relocations := $(LOCAL_PACK_MODULE_RELOCATIONS)
+my_pack_module_relocations := false
+ifneq ($(DISABLE_RELOCATION_PACKER),true)
+    my_pack_module_relocations := $(LOCAL_PACK_MODULE_RELOCATIONS)
+endif
 
 ifeq ($(my_pack_module_relocations),)
   my_pack_module_relocations := $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_PACK_MODULE_RELOCATIONS)
@@ -86,6 +89,20 @@ $(symbolic_output) : $(symbolic_input) | $(ACP)
 	@echo "target Symbolic: $(PRIVATE_MODULE) ($@)"
 	$(copy-file-to-target)
 
+###########################################################
+## Store breakpad symbols
+###########################################################
+
+ifeq ($(BREAKPAD_GENERATE_SYMBOLS),true)
+my_breakpad_path := $(TARGET_OUT_BREAKPAD)/$(patsubst $(PRODUCT_OUT)/%,%,$(my_module_path))
+breakpad_input := $(relocation_packer_output)
+breakpad_output := $(my_breakpad_path)/$(my_installed_module_stem).sym
+$(breakpad_output) : $(breakpad_input) | $(BREAKPAD_DUMP_SYMS)
+	@echo "target breakpad: $(PRIVATE_MODULE) ($@)"
+	@mkdir -p $(dir $@)
+	$(hide) $(BREAKPAD_DUMP_SYMS) -c $< > $@
+$(LOCAL_BUILT_MODULE) : $(breakpad_output)
+endif
 
 ###########################################################
 ## Strip
@@ -143,5 +160,6 @@ endif # my_strip_module
 
 $(cleantarget): PRIVATE_CLEAN_FILES += \
     $(linked_module) \
+    $(breakpad_output) \
     $(symbolic_output) \
     $(strip_output)

@@ -21,11 +21,11 @@ ifndef PDK_FUSION_PLATFORM_ZIP
 # Most PDK project paths should be using vendor/pdk/TARGET_DEVICE
 # but some legacy ones (e.g. mini_armv7a_neon generic PDK) were setup
 # with vendor/pdk/TARGET_PRODUCT.
-_pdk_fusion_default_platform_zip = $(wildcard \
-vendor/pdk/$(TARGET_DEVICE)/$(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)/platform/platform.zip \
-vendor/pdk/$(TARGET_DEVICE)/$(patsubst aosp_%,full_%,$(TARGET_PRODUCT))-$(TARGET_BUILD_VARIANT)/platform/platform.zip \
-vendor/pdk/$(TARGET_PRODUCT)/$(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)/platform/platform.zip \
-vendor/pdk/$(TARGET_PRODUCT)/$(patsubst aosp_%,full_%,$(TARGET_PRODUCT))-$(TARGET_BUILD_VARIANT)/platform/platform.zip)
+_pdk_fusion_default_platform_zip = $(strip \
+  $(wildcard vendor/pdk/$(TARGET_DEVICE)/$(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)/platform/platform.zip) \
+  $(wildcard vendor/pdk/$(TARGET_DEVICE)/$(patsubst aosp_%,full_%,$(TARGET_PRODUCT))-$(TARGET_BUILD_VARIANT)/platform/platform.zip) \
+  $(wildcard vendor/pdk/$(TARGET_PRODUCT)/$(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)/platform/platform.zip) \
+  $(wildcard vendor/pdk/$(TARGET_PRODUCT)/$(patsubst aosp_%,full_%,$(TARGET_PRODUCT))-$(TARGET_BUILD_VARIANT)/platform/platform.zip))
 ifneq (,$(_pdk_fusion_default_platform_zip))
 PDK_FUSION_PLATFORM_ZIP := $(word 1, $(_pdk_fusion_default_platform_zip))
 TARGET_BUILD_PDK := true
@@ -52,18 +52,20 @@ ifneq (,$(filter platform-java, $(MAKECMDGOALS))$(PDK_FUSION_PLATFORM_ZIP))
 # For these dirs, add classes.jar and javalib.jar from the dir to platform.zip
 # all paths under out dir
 PDK_PLATFORM_JAVA_ZIP_JAVA_TARGET_LIB_DIR += \
-	target/common/obj/JAVA_LIBRARIES/android_stubs_current_intermediates \
-	target/common/obj/JAVA_LIBRARIES/core-libart_intermediates \
-	target/common/obj/JAVA_LIBRARIES/core-junit_intermediates \
-	target/common/obj/JAVA_LIBRARIES/ext_intermediates \
-	target/common/obj/JAVA_LIBRARIES/framework_intermediates \
-	target/common/obj/JAVA_LIBRARIES/android.test.runner_intermediates \
-	target/common/obj/JAVA_LIBRARIES/telephony-common_intermediates \
-	target/common/obj/JAVA_LIBRARIES/voip-common_intermediates \
-	target/common/obj/JAVA_LIBRARIES/ims-common_intermediates \
-	target/common/obj/JAVA_LIBRARIES/mms-common_intermediates \
-	target/common/obj/JAVA_LIBRARIES/android-ex-camera2_intermediates \
-	target/common/obj/JAVA_LIBRARIES/android-common_intermediates \
+  target/common/obj/JAVA_LIBRARIES/android.test.runner_intermediates \
+  target/common/obj/JAVA_LIBRARIES/android-common_intermediates \
+  target/common/obj/JAVA_LIBRARIES/android-ex-camera2_intermediates \
+  target/common/obj/JAVA_LIBRARIES/android_stubs_current_intermediates \
+  target/common/obj/JAVA_LIBRARIES/bouncycastle_intermediates \
+  target/common/obj/JAVA_LIBRARIES/conscrypt_intermediates \
+  target/common/obj/JAVA_LIBRARIES/core-libart_intermediates \
+  target/common/obj/JAVA_LIBRARIES/core-junit_intermediates \
+  target/common/obj/JAVA_LIBRARIES/ext_intermediates \
+  target/common/obj/JAVA_LIBRARIES/framework_intermediates \
+  target/common/obj/JAVA_LIBRARIES/ims-common_intermediates \
+  target/common/obj/JAVA_LIBRARIES/okhttp_intermediates \
+  target/common/obj/JAVA_LIBRARIES/telephony-common_intermediates \
+  target/common/obj/JAVA_LIBRARIES/voip-common_intermediates \
 
 # not java libraries
 PDK_PLATFORM_JAVA_ZIP_CONTENTS += \
@@ -76,7 +78,7 @@ PDK_PLATFORM_JAVA_ZIP_JAVA_LIB_DIR := \
 	$(PDK_PLATFORM_JAVA_ZIP_JAVA_HOST_LIB_DIR)
 
 PDK_PLATFORM_JAVA_ZIP_CONTENTS += $(foreach lib_dir,$(PDK_PLATFORM_JAVA_ZIP_JAVA_LIB_DIR),\
-    $(lib_dir)/classes.jar $(lib_dir)/javalib.jar)
+    $(lib_dir)/classes.jack $(lib_dir)/classes.jar $(lib_dir)/javalib.jar)
 
 # check and override java support level
 ifneq ($(TARGET_BUILD_PDK)$(PDK_FUSION_PLATFORM_ZIP),)

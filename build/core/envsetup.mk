@@ -5,6 +5,11 @@
 # the bottom for the full list
 #     OUT_DIR is also set to "out" if it's not already set.
 #         this allows you to set it to somewhere else if you like
+#     SCAN_EXCLUDE_DIRS is an optional, whitespace separated list of
+#         directories that will also be excluded from full checkout tree
+#         searches for source or make files, in addition to OUT_DIR.
+#         This can be useful if you set OUT_DIR to be a different directory
+#         than other outputs of your build system.
 
 # Set up version information.
 include $(BUILD_SYSTEM)/version_defaults.mk
@@ -52,12 +57,11 @@ endif
 # BUILD_OS is the real host doing the build.
 BUILD_OS := $(HOST_OS)
 
-# Under Linux, if USE_MINGW is set, we change HOST_OS to Windows to build the
-# Windows SDK. Only a subset of tools and SDK will manage to build properly.
+HOST_CROSS_OS :=
+# We can cross-build Windows binaries on Linux
 ifeq ($(HOST_OS),linux)
-ifdef USE_MINGW
-  HOST_OS := windows
-endif
+HOST_CROSS_OS := windows
+HOST_CROSS_ARCH := x86
 endif
 
 ifeq ($(HOST_OS),)
@@ -128,11 +132,6 @@ $(warning bad TARGET_BUILD_VARIANT: $(TARGET_BUILD_VARIANT))
 $(error must be empty or one of: eng user userdebug)
 endif
 
-ifdef USE_MINGW
-# We only build sdk host tools in the MinGW windows build.
-# Build it as 32-bit as well.
-HOST_PREFER_32_BIT := true
-endif
 SDK_HOST_ARCH := x86
 
 # Boards may be defined under $(SRC_TARGET_DIR)/board/$(TARGET_DEVICE)
@@ -140,11 +139,11 @@ SDK_HOST_ARCH := x86
 # make sure only one exists.
 # Real boards should always be associated with an OEM vendor.
 board_config_mk := \
-	$(strip $(wildcard \
+	$(strip $(sort $(wildcard \
 		$(SRC_TARGET_DIR)/board/$(TARGET_DEVICE)/BoardConfig.mk \
-		$(shell test -d device && find device -maxdepth 4 -path '*/$(TARGET_DEVICE)/BoardConfig.mk') \
-		$(shell test -d vendor && find vendor -maxdepth 4 -path '*/$(TARGET_DEVICE)/BoardConfig.mk') \
-	))
+		$(shell test -d device && find -L device -maxdepth 4 -path '*/$(TARGET_DEVICE)/BoardConfig.mk') \
+		$(shell test -d vendor && find -L vendor -maxdepth 4 -path '*/$(TARGET_DEVICE)/BoardConfig.mk') \
+	)))
 ifeq ($(board_config_mk),)
   $(error No config file found for TARGET_DEVICE $(TARGET_DEVICE))
 endif
@@ -213,8 +212,12 @@ HOST_OUT_ROOT := $(HOST_OUT_ROOT_$(HOST_BUILD_TYPE))
 HOST_OUT_release := $(HOST_OUT_ROOT_release)/$(HOST_OS)-$(HOST_PREBUILT_ARCH)
 HOST_OUT_debug := $(HOST_OUT_ROOT_debug)/$(HOST_OS)-$(HOST_PREBUILT_ARCH)
 HOST_OUT := $(HOST_OUT_$(HOST_BUILD_TYPE))
+# TODO: remove
+BUILD_OUT := $(HOST_OUT)
 
-BUILD_OUT := $(OUT_DIR)/host/$(BUILD_OS)-$(HOST_PREBUILT_ARCH)
+HOST_CROSS_OUT_release := $(HOST_OUT_ROOT_release)/windows-$(HOST_PREBUILT_ARCH)
+HOST_CROSS_OUT_debug := $(HOST_OUT_ROOT_debug)/windows-$(HOST_PREBUILT_ARCH)
+HOST_CROSS_OUT := $(HOST_CROSS_OUT_$(HOST_BUILD_TYPE))
 
 TARGET_PRODUCT_OUT_ROOT := $(TARGET_OUT_ROOT)/product
 
@@ -232,6 +235,9 @@ HOST_OUT_SHARED_LIBRARIES := $(HOST_OUT)/lib64
 HOST_OUT_JAVA_LIBRARIES := $(HOST_OUT)/framework
 HOST_OUT_SDK_ADDON := $(HOST_OUT)/sdk_addon
 
+HOST_CROSS_OUT_EXECUTABLES := $(HOST_CROSS_OUT)/bin
+HOST_CROSS_OUT_SHARED_LIBRARIES := $(HOST_CROSS_OUT)/lib
+
 HOST_OUT_INTERMEDIATES := $(HOST_OUT)/obj
 HOST_OUT_HEADERS := $(HOST_OUT_INTERMEDIATES)/include
 HOST_OUT_INTERMEDIATE_LIBRARIES := $(HOST_OUT_INTERMEDIATES)/lib
@@ -239,8 +245,15 @@ HOST_OUT_NOTICE_FILES := $(HOST_OUT_INTERMEDIATES)/NOTICE_FILES
 HOST_OUT_COMMON_INTERMEDIATES := $(HOST_COMMON_OUT_ROOT)/obj
 HOST_OUT_FAKE := $(HOST_OUT)/fake_packages
 
+HOST_CROSS_OUT_INTERMEDIATES := $(HOST_CROSS_OUT)/obj
+HOST_CROSS_OUT_HEADERS := $(HOST_CROSS_OUT_INTERMEDIATES)/include
+HOST_CROSS_OUT_INTERMEDIATE_LIBRARIES := $(HOST_CROSS_OUT_INTERMEDIATES)/lib
+HOST_CROSS_OUT_NOTICE_FILES := $(HOST_CROSS_OUT_INTERMEDIATES)/NOTICE_FILES
+
 HOST_OUT_GEN := $(HOST_OUT)/gen
 HOST_OUT_COMMON_GEN := $(HOST_COMMON_OUT_ROOT)/gen
+
+HOST_CROSS_OUT_GEN := $(HOST_CROSS_OUT)/gen
 
 # Out for HOST_2ND_ARCH
 HOST_2ND_ARCH_VAR_PREFIX := 2ND_
@@ -268,7 +281,7 @@ TARGET_OUT_GEN := $(PRODUCT_OUT)/gen
 TARGET_OUT_COMMON_GEN := $(TARGET_COMMON_OUT_ROOT)/gen
 
 TARGET_OUT := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_SYSTEM)
-ifeq ($(SANITIZE_TARGET),address)
+ifneq ($(filter address,$(SANITIZE_TARGET)),)
 target_out_shared_libraries_base := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_DATA)
 else
 target_out_shared_libraries_base := $(TARGET_OUT)
@@ -325,7 +338,7 @@ $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_DATA_NATIVE_TESTS := $(TARGET_OUT_DATA)/
 TARGET_OUT_CACHE := $(PRODUCT_OUT)/cache
 
 TARGET_OUT_VENDOR := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_VENDOR)
-ifeq ($(SANITIZE_TARGET),address)
+ifneq ($(filter address,$(SANITIZE_TARGET)),)
 target_out_vendor_shared_libraries_base := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_DATA)/vendor
 else
 target_out_vendor_shared_libraries_base := $(TARGET_OUT_VENDOR)
@@ -375,6 +388,8 @@ TARGET_OUT_ODM_ETC := $(TARGET_OUT_ODM)/etc
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_ODM_EXECUTABLES := $(TARGET_OUT_ODM_EXECUTABLES)
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_ODM_SHARED_LIBRARIES := $(TARGET_OUT_ODM)/lib
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_ODM_APPS := $(TARGET_OUT_ODM_APPS)
+
+TARGET_OUT_BREAKPAD := $(PRODUCT_OUT)/breakpad
 
 TARGET_OUT_UNSTRIPPED := $(PRODUCT_OUT)/symbols
 TARGET_OUT_EXECUTABLES_UNSTRIPPED := $(TARGET_OUT_UNSTRIPPED)/system/bin

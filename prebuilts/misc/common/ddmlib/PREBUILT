@@ -1,9 +1,0 @@
-The object in this prebuilt directory can be built from
-	platform/tools/base
-
-From the commit 1cd60f02953f4df6f6905d6aa7a86a2a3758eed3
-
-Note: Before dropping the ddmlib-prebuilt.jar, please run
-the following command to strip the jar manifest file,
-which causes hidden dependency on jars in the Class-Path.
-$ zip -d ddmlib-prebuilt.jar META-INF/MANIFEST.MF

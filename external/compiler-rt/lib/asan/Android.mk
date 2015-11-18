@@ -178,11 +178,13 @@ include $(BUILD_SHARED_LIBRARY)
 
 endef
 
+ifeq (true,$(FORCE_BUILD_SANITIZER_SHARED_OBJECTS))
 ifdef 2ND_ADDRESS_SANITIZER_RUNTIME_LIBRARY
   $(eval $(call build-asan-rt-shared-library,$(ADDRESS_SANITIZER_RUNTIME_LIBRARY),64))
   $(eval $(call build-asan-rt-shared-library,$(2ND_ADDRESS_SANITIZER_RUNTIME_LIBRARY),32))
 else
   $(eval $(call build-asan-rt-shared-library,$(ADDRESS_SANITIZER_RUNTIME_LIBRARY),32))
+endif
 endif
 
 include $(CLEAR_VARS)

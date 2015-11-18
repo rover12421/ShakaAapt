@@ -1,5 +1,5 @@
-This is libquadmath.info, produced by makeinfo version 4.13 from
-/tmp/build-mingw64-toolchain-digit/src/gcc-4.8.3/libquadmath/libquadmath.texi.
+This is libquadmath.info, produced by makeinfo version 4.12 from
+/space/rguenther/gcc-4.8.3/gcc-4.8.3/libquadmath/libquadmath.texi.
 
 Copyright (C) 2010-2013 Free Software Foundation, Inc.
 
@@ -912,13 +912,13 @@ reported via `http://gcc.gnu.org/bugs.html'.
 
 
 Tag Table:
-Node: Top1696
-Node: Typedef and constants2430
-Node: Math Library Routines3870
-Node: I/O Library Routines7675
-Node: strtoflt1288000
-Node: quadmath_snprintf8758
-Node: GNU Free Documentation License10966
-Node: Reporting Bugs36132
+Node: Top1684
+Node: Typedef and constants2418
+Node: Math Library Routines3858
+Node: I/O Library Routines7663
+Node: strtoflt1287988
+Node: quadmath_snprintf8746
+Node: GNU Free Documentation License10954
+Node: Reporting Bugs36120
 
 End Tag Table

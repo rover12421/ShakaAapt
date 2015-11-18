@@ -1,2 +1,0 @@
-service debuggerd /system/bin/debuggerd
-    class main

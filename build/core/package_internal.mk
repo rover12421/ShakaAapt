@@ -176,7 +176,7 @@ endif # LOCAL_JACK_ENABLED
 ifeq (true,$(EMMA_INSTRUMENT))
 ifndef LOCAL_EMMA_INSTRUMENT
 # No emma for test apks.
-ifeq (,$(filer tests,$(LOCAL_MODULE_TAGS))$(LOCAL_INSTRUMENTATION_FOR))
+ifeq (,$(LOCAL_INSTRUMENTATION_FOR))
 LOCAL_EMMA_INSTRUMENT := true
 endif # No test apk
 endif # LOCAL_EMMA_INSTRUMENT is not set
@@ -241,7 +241,7 @@ $(R_file_stamp): PRIVATE_RESOURCE_PUBLICS_OUTPUT := \
 $(R_file_stamp): PRIVATE_PROGUARD_OPTIONS_FILE := $(proguard_options_file)
 $(R_file_stamp): $(all_res_assets) $(full_android_manifest) $(RenderScript_file_stamp) $(AAPT) | $(ACP)
 	@echo "target R.java/Manifest.java: $(PRIVATE_MODULE) ($@)"
-	@rm -f $@
+	@rm -rf $@ && mkdir -p $(dir $@)
 	$(create-resource-java-files)
 	$(hide) for GENERATED_MANIFEST_FILE in `find $(PRIVATE_SOURCE_INTERMEDIATES_DIR) \
 					-name Manifest.java 2> /dev/null`; do \
@@ -256,7 +256,10 @@ $(R_file_stamp): $(all_res_assets) $(full_android_manifest) $(RenderScript_file_
 		$(ACP) -fp $$GENERATED_R_FILE $(TARGET_COMMON_OUT_ROOT)/R/$$dir \
 			|| exit 31; \
 		$(ACP) -fp $$GENERATED_R_FILE $@ || exit 32; \
-	done; \
+	done;
+	@# Ensure that the target file is always created, i.e. also in case we did not
+	@# enter the GENERATED_R_FILE-loop above. This avoids unnecessary rebuilding.
+	$(hide) touch $@
 
 $(proguard_options_file): $(R_file_stamp)
 
@@ -392,7 +395,6 @@ $(LOCAL_BUILT_MODULE): $(AAPT) | $(ZIPALIGN)
 $(LOCAL_BUILT_MODULE): PRIVATE_JNI_SHARED_LIBRARIES := $(jni_shared_libraries_with_abis)
 # PRIVATE_JNI_SHARED_LIBRARIES_ABI is a list of ABI names.
 $(LOCAL_BUILT_MODULE): PRIVATE_JNI_SHARED_LIBRARIES_ABI := $(jni_shared_libraries_abis)
-$(LOCAL_BUILT_MODULE): PRIVATE_PAGE_ALIGN_JNI_SHARED_LIBRARIES := $(LOCAL_PAGE_ALIGN_JNI_SHARED_LIBRARIES)
 ifneq ($(TARGET_BUILD_APPS),)
     # Include all resources for unbundled apps.
     LOCAL_AAPT_INCLUDE_ALL_RESOURCES := true

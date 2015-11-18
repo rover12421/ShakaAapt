@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote fetch=".." name="aosp" review="https://android-review.googlesource.com/"/>
+  
+  <default remote="aosp" revision="master" sync-j="4"/>
+  
+  <project groups="pdk" name="platform/bionic" path="bionic" revision="8d92afe32265be8c36ea2adb3c4059298cd583eb" upstream="master"/>
+  <project groups="pdk-cw-fs" name="platform/development" path="development" revision="54212f988146578dd014c42a8b1e66e98ab740e7" upstream="master"/>
+  <project name="platform/external/chromite" path="chromite" revision="f9a912f6cfbc0c8e9419cafb0c7b1698926dce5f" upstream="master"/>
+  <project name="platform/ndk" path="ndk" revision="d635836b69953d91568a686f5613b1787dc3e1bd" upstream="master"/>
+  <project groups="pdk,darwin" name="platform/prebuilts/clang/darwin-x86/host/3.6" path="prebuilts/clang/darwin-x86/host/3.6" revision="2f82e647995de18b47411091197d47714a502015" upstream="master"/>
+  <project name="platform/prebuilts/clang/host/windows-x86" path="prebuilts/clang/windows-x86/host/3.6" revision="f815c2be35252a78d3c0f4aed41630827f41e71d" upstream="master"/>
+  <project groups="pdk,linux" name="platform/prebuilts/clang/linux-x86/host/3.6" path="prebuilts/clang/linux-x86/host/3.6" revision="ac7be37a7a0cabeb34c335bf5d8882afcba4efa0" upstream="master"/>
+  <project groups="pdk,darwin,arm" name="platform/prebuilts/gcc/darwin-x86/aarch64/aarch64-linux-android-4.9" path="prebuilts/gcc/darwin-x86/aarch64/aarch64-linux-android-4.9" revision="e821c649f37f3aafa2f84e919bdf006a163b1b76" upstream="master"/>
+  <project groups="pdk,darwin,arm" name="platform/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.8" path="prebuilts/gcc/darwin-x86/arm/arm-eabi-4.8" revision="6d08ca9f45ff685648fd13c75bf5cac4b11c19bb" upstream="master"/>
+  <project name="platform/prebuilts/gcc/darwin-x86/arm/arm-linux-androideabi-4.9" path="prebuilts/gcc/darwin-x86/arm/arm-linux-androideabi-4.9" revision="83189309ee02314ad9e7147b96c6a893e5cf1ca0" upstream="master"/>
+  <project groups="pdk,darwin" name="platform/prebuilts/gcc/darwin-x86/host/headers" path="prebuilts/gcc/darwin-x86/host/headers" revision="4ac4f7cc41cf3c9e36fc3d6cf37fd1cfa9587a68" upstream="master"/>
+  <project groups="pdk,darwin" name="platform/prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1" path="prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1" revision="8834958755acc291d126ba7ee38ac731d04f9c9e" upstream="master"/>
+  <project groups="pdk,darwin,mips" name="platform/prebuilts/gcc/darwin-x86/mips/mips64el-linux-android-4.9" path="prebuilts/gcc/darwin-x86/mips/mips64el-linux-android-4.9" revision="aa65de04f78c9c87805be00666ae0c6bbe0ebfb6" upstream="master"/>
+  <project groups="pdk,darwin,x86" name="platform/prebuilts/gcc/darwin-x86/x86/x86_64-linux-android-4.9" path="prebuilts/gcc/darwin-x86/x86/x86_64-linux-android-4.9" revision="c0371efb25365f44e0ad4ea61a74d6e4fb84f3ce" upstream="master"/>
+  <project groups="pdk,linux,arm" name="platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9" path="prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9" revision="94cc9234bb6adef9d701819180a3c2db8360ea31" upstream="master"/>
+  <project groups="pdk,linux,arm" name="platform/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8" path="prebuilts/gcc/linux-x86/arm/arm-eabi-4.8" revision="26e93f6af47f7bd3a9beb5c102a5f45e19bfa38a" upstream="master"/>
+  <project name="platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9" path="prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9" revision="a70724fae4d4c571e5657340f80a0c130d5283ec" upstream="master"/>
+  <project groups="pdk,linux" name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.11-4.8" path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.11-4.8" revision="63b209feac0b045f5fc68810fd2e65bf1ca51e2f" upstream="master"/>
+  <project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8" path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8" revision="f61a459478cdc31e8aae22a182cdbf814ba08012" upstream="master"/>
+  <project name="platform/prebuilts/gcc/linux-x86/host/x86_64-w64-mingw32-4.8" path="prebuilts/gcc/linux-x86/host/x86_64-w64-mingw32-4.8" revision="f691cae2f256d5f72388c0ce9113007a53ad333a" upstream="master"/>
+  <project groups="pdk,linux,mips" name="platform/prebuilts/gcc/linux-x86/mips/mips64el-linux-android-4.9" path="prebuilts/gcc/linux-x86/mips/mips64el-linux-android-4.9" revision="59461df1418b3771c11f1957bb8f7f41e399447d" upstream="master"/>
+  <project groups="pdk,linux,x86" name="platform/prebuilts/gcc/linux-x86/x86/x86_64-linux-android-4.9" path="prebuilts/gcc/linux-x86/x86/x86_64-linux-android-4.9" revision="c1a39ddef8496eb84c49883423a220e7dfe80d06" upstream="master"/>
+  <project groups="pdk" name="platform/prebuilts/ndk" path="prebuilts/ndk" revision="494e98c2aca71476d9f9383c1205a7172dddd343" upstream="dev"/>
+  <project groups="darwin,pdk,pdk-cw-fs" name="platform/prebuilts/python/darwin-x86/2.7.5" path="prebuilts/python/darwin-x86/2.7.5" revision="dacf2de576516f2751420eb60b8daf64d0f91677" upstream="master"/>
+  <project groups="linux,pdk,pdk-cw-fs" name="platform/prebuilts/python/linux-x86/2.7.5" path="prebuilts/python/linux-x86/2.7.5" revision="583652f1b6e213ea1763099736dabc8070798d47" upstream="master"/>
+  <project name="toolchain/binutils" revision="042c220bc2d2c48ecf410b0dfffb388a5d57cccc" upstream="master"/>
+  <project name="toolchain/build" revision="79b5701f1e2f0dee68958c7c4206cdf9c44f1261" upstream="master"/>
+  <project name="toolchain/cloog" revision="604793eab97d360aef729f064674569ee6dbf3e1" upstream="master"/>
+  <project name="toolchain/expat" revision="40172a0ae9d40a068f1e1a48ffcf6a1ccf765ed5" upstream="master"/>
+  <project name="toolchain/gcc" revision="81762471dff662de3066037f425d4dadc20be40f" upstream="master"/>
+  <project name="toolchain/gdb" revision="c9f9f54d36124448cf18d57923ec801ca84478b5" upstream="master"/>
+  <project name="toolchain/gmp" revision="b2acd5dbf47868ac5b5bc844e16d2cadcbd4c810" upstream="master"/>
+  <project name="toolchain/isl" revision="b05d4572958c5d497da793f3317084bab90c3033" upstream="master"/>
+  <project name="toolchain/mpc" revision="835d16e92eed875638a8b5d552034c3b1aae045b" upstream="master"/>
+  <project name="toolchain/mpfr" revision="de979fc377db766591e7feaf052f0de59be46e76" upstream="master"/>
+  <project name="toolchain/ndk_chromite_config" path="chromite/config" revision="aaf0bc7c5c33aa92f2b796537cea44309f514e09" upstream="master"/>
+  <project name="toolchain/ppl" revision="979062d362bc5a1c00804237b408b19b4618fb24" upstream="master"/>
+  <project name="toolchain/python" revision="5d4afafe362cfabf6c4783a11c4c80df5afa1e1f" upstream="master"/>
+  <project name="toolchain/sed" revision="45df23d6dc8b51ea5cd903d023c10fd7d72415b9" upstream="master"/>
+  <project name="toolchain/yasm" revision="c78ebe9a44cf69c46fd4e3185fef62e567b5ad4a" upstream="master"/>
+</manifest>

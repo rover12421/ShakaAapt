@@ -87,6 +87,16 @@ LOCAL_MULTILIB := both
 include $(BUILD_HOST_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
+LOCAL_MODULE := libubsan_cxx
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_C_INCLUDES := $(ubsan_rtl_c_includes)
+LOCAL_CPPFLAGS := $(ubsan_rtl_cppflags)
+LOCAL_SRC_FILES := $(ubsan_cxx_rtl_files)
+LOCAL_SANITIZE := never
+LOCAL_MULTILIB := both
+include $(BUILD_HOST_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
 LOCAL_MODULE := libubsan_standalone_cxx
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_C_INCLUDES := $(ubsan_rtl_c_includes)

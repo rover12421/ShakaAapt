@@ -1,5 +1,0 @@
-The object in this prebuilt directory can be rebuilt from
-	platform/tools/tradefederation
-
-From the revision bdfc46aa14b33f907f60202604c3667940c5c97a
- with cherry-pick e9d4e8bab7fbb696d5f1b8115da35a2ee887bf6c

@@ -54,20 +54,18 @@ public:
           mWantUTF16(false), mValues(false), mIncludeMetaData(false),
           mCompressionMethod(0), mJunkPath(false), mOutputAPKFile(NULL),
           mManifestPackageNameOverride(NULL), mInstrumentationPackageNameOverride(NULL),
-          mAutoAddOverlay(false), mGenDependencies(false),
+          mAutoAddOverlay(false), mGenDependencies(false), mNoVersionVectors(false),
           mCrunchedOutputDir(NULL), mProguardFile(NULL),
           mAndroidManifestFile(NULL), mPublicOutputFile(NULL),
           mRClassDir(NULL), mResourceIntermediatesDir(NULL), mManifestMinSdkVersion(NULL),
           mMinSdkVersion(NULL), mTargetSdkVersion(NULL), mMaxSdkVersion(NULL),
           mVersionCode(NULL), mVersionName(NULL), mReplaceVersion(false), mCustomPackage(NULL),
           mExtraPackages(NULL), mMaxResVersion(NULL), mDebugMode(false), mNonConstantId(false),
+          mSkipSymbolsWithoutDefaultLocalization(false),
           mProduct(NULL), mUseCrunchCache(false), mErrorOnFailedInsert(false),
           mErrorOnMissingConfigEntry(false), mOutputTextSymbols(NULL),
           mSingleCrunchInputFile(NULL), mSingleCrunchOutputFile(NULL),
           mBuildSharedLibrary(false),
-          //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-          mForcedPackageId(-1),
-          //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
           mArgc(0), mArgv(NULL)
         {}
     ~Bundle(void) {}
@@ -194,6 +192,8 @@ public:
     void setDebugMode(bool val) { mDebugMode = val; }
     bool getNonConstantId() const { return mNonConstantId; }
     void setNonConstantId(bool val) { mNonConstantId = val; }
+    bool getSkipSymbolsWithoutDefaultLocalization() const { return mSkipSymbolsWithoutDefaultLocalization; }
+    void setSkipSymbolsWithoutDefaultLocalization(bool val) { mSkipSymbolsWithoutDefaultLocalization = val; }
     const char* getProduct() const { return mProduct; }
     void setProduct(const char * val) { mProduct = val; }
     void setUseCrunchCache(bool val) { mUseCrunchCache = val; }
@@ -206,11 +206,8 @@ public:
     void setSingleCrunchOutputFile(const char* val) { mSingleCrunchOutputFile = val; }
     bool getBuildSharedLibrary() const { return mBuildSharedLibrary; }
     void setBuildSharedLibrary(bool val) { mBuildSharedLibrary = val; }
-
-    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-    int getForcedPackageId() const { return mForcedPackageId; }
-    void setForcedPackageId(int val) { mForcedPackageId = val; }
-    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+    void setNoVersionVectors(bool val) { mNoVersionVectors = val; }
+    bool getNoVersionVectors() const { return mNoVersionVectors; }
 
     /*
      * Set and get the file specification.
@@ -290,6 +287,7 @@ private:
     const char* mInstrumentationPackageNameOverride;
     bool        mAutoAddOverlay;
     bool        mGenDependencies;
+    bool        mNoVersionVectors;
     const char* mCrunchedOutputDir;
     const char* mProguardFile;
     const char* mAndroidManifestFile;
@@ -320,6 +318,7 @@ private:
     const char* mMaxResVersion;
     bool        mDebugMode;
     bool        mNonConstantId;
+    bool        mSkipSymbolsWithoutDefaultLocalization;
     const char* mProduct;
     bool        mUseCrunchCache;
     bool        mErrorOnFailedInsert;
@@ -330,10 +329,6 @@ private:
     bool        mBuildSharedLibrary;
     android::String8 mPlatformVersionCode;
     android::String8 mPlatformVersionName;
-
-    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-    int 	    mForcedPackageId;
-    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
 
     /* file specification */
     int         mArgc;

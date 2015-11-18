@@ -17,41 +17,43 @@
 LOCAL_PATH := $(call my-dir)
 
 LIBCXX_SRC_FILES := \
-	src/algorithm.cpp \
-	src/bind.cpp \
-	src/chrono.cpp \
-	src/condition_variable.cpp \
-	src/debug.cpp \
-	src/exception.cpp \
-	src/future.cpp \
-	src/hash.cpp \
-	src/ios.cpp \
-	src/iostream.cpp \
-	src/locale.cpp \
-	src/memory.cpp \
-	src/mutex.cpp \
-	src/new.cpp \
-	src/optional.cpp \
-	src/random.cpp \
-	src/regex.cpp \
-	src/shared_mutex.cpp \
-	src/stdexcept.cpp \
-	src/string.cpp \
-	src/strstream.cpp \
-	src/system_error.cpp \
-	src/thread.cpp \
-	src/typeinfo.cpp \
-	src/utility.cpp \
-	src/valarray.cpp \
+    src/algorithm.cpp \
+    src/any.cpp \
+    src/bind.cpp \
+    src/chrono.cpp \
+    src/condition_variable.cpp \
+    src/config_elast.h \
+    src/debug.cpp \
+    src/exception.cpp \
+    src/future.cpp \
+    src/hash.cpp \
+    src/ios.cpp \
+    src/iostream.cpp \
+    src/locale.cpp \
+    src/memory.cpp \
+    src/mutex.cpp \
+    src/new.cpp \
+    src/optional.cpp \
+    src/random.cpp \
+    src/regex.cpp \
+    src/shared_mutex.cpp \
+    src/stdexcept.cpp \
+    src/string.cpp \
+    src/strstream.cpp \
+    src/support \
+    src/system_error.cpp \
+    src/thread.cpp \
+    src/typeinfo.cpp \
+    src/utility.cpp \
+    src/valarray.cpp \
 
 LIBCXX_C_INCLUDES := \
-	$(LOCAL_PATH)/include/ \
-	external/libcxxabi/include \
+    $(LOCAL_PATH)/include/ \
 
 LIBCXX_CPPFLAGS := \
-	-std=c++14 \
-	-nostdinc++ \
-	-fexceptions \
+    -std=c++14 \
+    -nostdinc++ \
+    -fexceptions \
 
 # target static lib
 include $(CLEAR_VARS)
@@ -59,6 +61,7 @@ LOCAL_MODULE := libc++_static
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include external/libcxxabi/include
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
@@ -69,6 +72,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include external/libcxxabi/include
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_SHARED_LIBRARIES := libdl
 LOCAL_CXX_STL := none
@@ -82,6 +86,7 @@ LOCAL_MODULE := libc++_static
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(LIBCXX_SRC_FILES)
 LOCAL_C_INCLUDES := $(LIBCXX_C_INCLUDES)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include external/libcxxabi/include
 LOCAL_CPPFLAGS := $(LIBCXX_CPPFLAGS)
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++abi
@@ -96,6 +101,7 @@ ifeq (,$(TARGET_BUILD_APPS))
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
 LOCAL_CLANG := true
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include external/libcxxabi/include
 LOCAL_LDFLAGS := -nodefaultlibs
 LOCAL_WHOLE_STATIC_LIBRARIES := libc++_static
 LOCAL_MULTILIB := both
@@ -112,57 +118,8 @@ endif
 
 include $(BUILD_HOST_SHARED_LIBRARY)
 
-LIT := $(ANDROID_BUILD_TOP)/external/llvm/utils/lit/lit.py
-LIBCXX_CONFIGTESTS := $(ANDROID_BUILD_TOP)/external/libcxx/buildcmds/configtests.py
-LIBCXX_TEST_MK := $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
-
-test-libcxx-target: test-libcxx-target-clang
-test-libcxx-host: test-libcxx-host-clang
-
-test-libcxx-target-clang: libc++
-	python $(LIBCXX_CONFIGTESTS) --compiler=clang
-	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
-test-libcxx-target-gcc: libc++
-	python $(LIBCXX_CONFIGTESTS) --compiler=gcc
-	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
-test-libcxx-target-clang-32: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=clang
-	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
-test-libcxx-target-gcc-32: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=gcc
-	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
-test-libcxx-target-clang-64: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=clang
-	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
-test-libcxx-target-gcc-64: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=gcc
-	LIT=$(LIT) LIT_MODE=device make -f $(LIBCXX_TEST_MK)
-
-test-libcxx-host-clang: libc++
-	python $(LIBCXX_CONFIGTESTS) --compiler=clang --host
-	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
-test-libcxx-host-gcc: libc++
-	python $(LIBCXX_CONFIGTESTS) --compiler=gcc --host
-	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
-test-libcxx-host-clang-32: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=clang --host
-	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
-test-libcxx-host-gcc-32: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=32 --compiler=gcc --host
-	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
-test-libcxx-host-clang-64: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=clang --host
-	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
-test-libcxx-host-gcc-64: libc++
-	python $(LIBCXX_CONFIGTESTS) --bitness=64 --compiler=gcc --host
-	LIT=$(LIT) LIT_MODE=host make -f $(LIBCXX_TEST_MK)
-
-# Don't want to just make test-libcxx-(host|target) dependencies of this because
-# the two families can't be run concurrently.
-test-libcxx: libc++
-	python buildcmds/configtests.py --host
-	LIT=$(LIT) LIT_MODE=host make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
-	python buildcmds/configtests.py
-	LIT=$(LIT) LIT_MODE=device make -f $(ANDROID_BUILD_TOP)/external/libcxx/test.mk
+ifdef LIBCXX_TESTING
+include $(LOCAL_PATH)/buildcmds/Android.mk
+endif
 
 endif  # TARGET_BUILD_APPS

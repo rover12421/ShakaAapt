@@ -28,6 +28,7 @@ if sys.hexversion < 0x02070000:
   print >> sys.stderr, "Python 2.7 or newer is required."
   sys.exit(1)
 
+import datetime
 import errno
 import os
 import shutil
@@ -41,6 +42,9 @@ OPTIONS = common.OPTIONS
 
 OPTIONS.add_missing = False
 OPTIONS.rebuild_recovery = False
+OPTIONS.replace_verity_public_key = False
+OPTIONS.replace_verity_private_key = False
+OPTIONS.verity_signer_path = None
 
 def AddSystem(output_zip, prefix="IMAGES/", recovery_img=None, boot_img=None):
   """Turn the contents of SYSTEM into a system image and store it in
@@ -120,6 +124,12 @@ def CreateImage(input_dir, info_dict, what, block_list=None):
   if fstab:
     image_props["fs_type"] = fstab["/" + what].fs_type
 
+  # Use a fixed timestamp (01/01/2009) when packaging the image.
+  # Bug: 24377993
+  epoch = datetime.datetime.fromtimestamp(0)
+  timestamp = (datetime.datetime(2009, 1, 1) - epoch).total_seconds()
+  image_props["timestamp"] = int(timestamp)
+
   if what == "system":
     fs_config_prefix = ""
   else:
@@ -166,6 +176,12 @@ def AddUserdata(output_zip, prefix="IMAGES/"):
 
   print "creating userdata.img..."
 
+  # Use a fixed timestamp (01/01/2009) when packaging the image.
+  # Bug: 24377993
+  epoch = datetime.datetime.fromtimestamp(0)
+  timestamp = (datetime.datetime(2009, 1, 1) - epoch).total_seconds()
+  image_props["timestamp"] = int(timestamp)
+
   # The name of the directory it is making an image out of matters to
   # mkyaffs2image.  So we create a temp dir, and within it we create an
   # empty dir named "data", or a symlink to the DATA dir,
@@ -210,6 +226,12 @@ def AddCache(output_zip, prefix="IMAGES/"):
 
   print "creating cache.img..."
 
+  # Use a fixed timestamp (01/01/2009) when packaging the image.
+  # Bug: 24377993
+  epoch = datetime.datetime.fromtimestamp(0)
+  timestamp = (datetime.datetime(2009, 1, 1) - epoch).total_seconds()
+  image_props["timestamp"] = int(timestamp)
+
   # The name of the directory it is making an image out of matters to
   # mkyaffs2image.  So we create a temp dir, and within it we create an
   # empty dir named "cache", and build the image from that.
@@ -252,6 +274,8 @@ def AddImagesToTargetFiles(filename):
   output_zip = zipfile.ZipFile(filename, "a",
                                compression=zipfile.ZIP_DEFLATED)
 
+  has_recovery = (OPTIONS.info_dict.get("no_recovery") != "true")
+
   def banner(s):
     print "\n\n++++ " + s + " ++++\n\n"
 
@@ -269,19 +293,21 @@ def AddImagesToTargetFiles(filename):
     if boot_image:
       boot_image.AddToZip(output_zip)
 
-  banner("recovery")
   recovery_image = None
-  prebuilt_path = os.path.join(OPTIONS.input_tmp, "IMAGES", "recovery.img")
-  if os.path.exists(prebuilt_path):
-    print "recovery.img already exists in IMAGES/, no need to rebuild..."
-    if OPTIONS.rebuild_recovery:
+  if has_recovery:
+    banner("recovery")
+    prebuilt_path = os.path.join(OPTIONS.input_tmp, "IMAGES", "recovery.img")
+    if os.path.exists(prebuilt_path):
+      print "recovery.img already exists in IMAGES/, no need to rebuild..."
+      if OPTIONS.rebuild_recovery:
+        recovery_image = common.GetBootableImage(
+            "IMAGES/recovery.img", "recovery.img", OPTIONS.input_tmp,
+            "RECOVERY")
+    else:
       recovery_image = common.GetBootableImage(
           "IMAGES/recovery.img", "recovery.img", OPTIONS.input_tmp, "RECOVERY")
-  else:
-    recovery_image = common.GetBootableImage(
-        "IMAGES/recovery.img", "recovery.img", OPTIONS.input_tmp, "RECOVERY")
-    if recovery_image:
-      recovery_image.AddToZip(output_zip)
+      if recovery_image:
+        recovery_image.AddToZip(output_zip)
 
   banner("system")
   AddSystem(output_zip, recovery_img=recovery_image, boot_img=boot_image)
@@ -293,21 +319,47 @@ def AddImagesToTargetFiles(filename):
   banner("cache")
   AddCache(output_zip)
 
+  # For devices using A/B update, copy over images from RADIO/ to IMAGES/ and
+  # make sure we have all the needed images ready under IMAGES/.
+  ab_partitions = os.path.join(OPTIONS.input_tmp, "META", "ab_partitions.txt")
+  if os.path.exists(ab_partitions):
+    with open(ab_partitions, 'r') as f:
+      lines = f.readlines()
+    for line in lines:
+      img_name = line.strip() + ".img"
+      img_radio_path = os.path.join(OPTIONS.input_tmp, "RADIO", img_name)
+      if os.path.exists(img_radio_path):
+        common.ZipWrite(output_zip, img_radio_path,
+                        os.path.join("IMAGES", img_name))
+
+      # Zip spec says: All slashes MUST be forward slashes.
+      img_path = 'IMAGES/' + img_name
+      assert img_path in output_zip.namelist(), "cannot find " + img_name
+
   common.ZipClose(output_zip)
 
 def main(argv):
-  def option_handler(o, _):
+  def option_handler(o, a):
     if o in ("-a", "--add_missing"):
       OPTIONS.add_missing = True
     elif o in ("-r", "--rebuild_recovery",):
       OPTIONS.rebuild_recovery = True
+    elif o == "--replace_verity_private_key":
+      OPTIONS.replace_verity_private_key = (True, a)
+    elif o == "--replace_verity_public_key":
+      OPTIONS.replace_verity_public_key = (True, a)
+    elif o == "--verity_signer_path":
+      OPTIONS.verity_signer_path = a
     else:
       return False
     return True
 
   args = common.ParseOptions(
       argv, __doc__, extra_opts="ar",
-      extra_long_opts=["add_missing", "rebuild_recovery"],
+      extra_long_opts=["add_missing", "rebuild_recovery",
+                       "replace_verity_public_key=",
+                       "replace_verity_private_key=",
+                       "verity_signer_path="],
       extra_option_handler=option_handler)
 
 

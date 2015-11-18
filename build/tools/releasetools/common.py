@@ -51,11 +51,16 @@ class Options(object):
     self.private_key_suffix = ".pk8"
     # use otatools built boot_signer by default
     self.boot_signer_path = "boot_signer"
+    self.boot_signer_args = []
+    self.verity_signer_path = None
+    self.verity_signer_args = []
     self.verbose = False
     self.tempfiles = []
     self.device_specific = None
     self.extras = {}
     self.info_dict = None
+    self.source_info_dict = None
+    self.target_info_dict = None
     self.worker_threads = None
     # Stash size cannot exceed cache_size * threshold.
     self.cache_size = None
@@ -159,11 +164,12 @@ def LoadInfoDict(input_file, input_dir=None):
     # to build images than the one running on device, such as when enabling
     # system_root_image. In that case, we must have the one for image
     # generation copied to META/.
-    fc_config = os.path.join(input_dir, "META", "file_contexts.bin")
+    fc_basename = os.path.basename(d.get("selinux_fc", "file_contexts"))
+    fc_config = os.path.join(input_dir, "META", fc_basename)
     if d.get("system_root_image") == "true":
       assert os.path.exists(fc_config)
     if not os.path.exists(fc_config):
-      fc_config = os.path.join(input_dir, "BOOT", "RAMDISK", "file_contexts.bin")
+      fc_config = os.path.join(input_dir, "BOOT", "RAMDISK", fc_basename)
       if not os.path.exists(fc_config):
         fc_config = None
 
@@ -420,11 +426,14 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
   assert p.returncode == 0, "mkbootimg of %s image failed" % (
       os.path.basename(sourcedir),)
 
-  if info_dict.get("verity_key", None):
+  if (info_dict.get("boot_signer", None) == "true" and
+      info_dict.get("verity_key", None)):
     path = "/" + os.path.basename(sourcedir).lower()
-    cmd = [OPTIONS.boot_signer_path, path, img.name,
-           info_dict["verity_key"] + ".pk8",
-           info_dict["verity_key"] + ".x509.pem", img.name]
+    cmd = [OPTIONS.boot_signer_path]
+    cmd.extend(OPTIONS.boot_signer_args)
+    cmd.extend([path, img.name,
+                info_dict["verity_key"] + ".pk8",
+                info_dict["verity_key"] + ".x509.pem", img.name])
     p = Run(cmd, stdout=subprocess.PIPE)
     p.communicate()
     assert p.returncode == 0, "boot_signer of %s image failed" % path
@@ -435,7 +444,9 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
     img_keyblock = tempfile.NamedTemporaryFile()
     cmd = [info_dict["vboot_signer_cmd"], info_dict["futility"],
            img_unsigned.name, info_dict["vboot_key"] + ".vbpubk",
-           info_dict["vboot_key"] + ".vbprivk", img_keyblock.name,
+           info_dict["vboot_key"] + ".vbprivk",
+           info_dict["vboot_subkey"] + ".vbprivk",
+           img_keyblock.name,
            img.name]
     p = Run(cmd, stdout=subprocess.PIPE)
     p.communicate()
@@ -726,7 +737,8 @@ def ParseOptions(argv,
         argv, "hvp:s:x:" + extra_opts,
         ["help", "verbose", "path=", "signapk_path=", "extra_signapk_args=",
          "java_path=", "java_args=", "public_key_suffix=",
-         "private_key_suffix=", "boot_signer_path=", "device_specific=",
+         "private_key_suffix=", "boot_signer_path=", "boot_signer_args=",
+         "verity_signer_path=", "verity_signer_args=", "device_specific=",
          "extra="] +
         list(extra_long_opts))
   except getopt.GetoptError as err:
@@ -756,6 +768,12 @@ def ParseOptions(argv,
       OPTIONS.private_key_suffix = a
     elif o in ("--boot_signer_path",):
       OPTIONS.boot_signer_path = a
+    elif o in ("--boot_signer_args",):
+      OPTIONS.boot_signer_args = shlex.split(a)
+    elif o in ("--verity_signer_path",):
+      OPTIONS.verity_signer_path = a
+    elif o in ("--verity_signer_args",):
+      OPTIONS.verity_signer_args = shlex.split(a)
     elif o in ("-s", "--device_specific"):
       OPTIONS.device_specific = a
     elif o in ("-x", "--extra"):
@@ -1067,6 +1085,9 @@ class DeviceSpecificParams(object):
     processor."""
     return self._DoCall("IncrementalOTA_InstallEnd")
 
+  def VerifyOTA_Assertions(self):
+    return self._DoCall("VerifyOTA_Assertions")
+
 class File(object):
   def __init__(self, name, data):
     self.name = name
@@ -1243,7 +1264,11 @@ class BlockDifference(object):
     self.path = os.path.join(tmpdir, partition)
     b.Compute(self.path)
 
-    _, self.device = GetTypeAndDevice("/" + partition, OPTIONS.info_dict)
+    if src is None:
+      _, self.device = GetTypeAndDevice("/" + partition, OPTIONS.info_dict)
+    else:
+      _, self.device = GetTypeAndDevice("/" + partition,
+                                        OPTIONS.source_info_dict)
 
   def WriteScript(self, script, output_zip, progress=None):
     if not self.src:
@@ -1257,6 +1282,25 @@ class BlockDifference(object):
     self._WriteUpdate(script, output_zip)
     self._WritePostInstallVerifyScript(script)
 
+  def WriteStrictVerifyScript(self, script):
+    """Verify all the blocks in the care_map, including clobbered blocks.
+
+    This differs from the WriteVerifyScript() function: a) it prints different
+    error messages; b) it doesn't allow half-way updated images to pass the
+    verification."""
+
+    partition = self.partition
+    script.Print("Verifying %s..." % (partition,))
+    ranges = self.tgt.care_map
+    ranges_str = ranges.to_string_raw()
+    script.AppendExtra('range_sha1("%s", "%s") == "%s" && '
+                       'ui_print("    Verified.") || '
+                       'ui_print("\\"%s\\" has unexpected contents.");' % (
+                       self.device, ranges_str,
+                       self.tgt.TotalSha1(include_clobbered_blocks=True),
+                       self.device))
+    script.AppendExtra("")
+
   def WriteVerifyScript(self, script):
     partition = self.partition
     if not self.src:
@@ -1264,7 +1308,20 @@ class BlockDifference(object):
     else:
       ranges = self.src.care_map.subtract(self.src.clobbered_blocks)
       ranges_str = ranges.to_string_raw()
-      if self.version >= 3:
+      if self.version >= 4:
+        script.AppendExtra(('if (range_sha1("%s", "%s") == "%s" || '
+                            'block_image_verify("%s", '
+                            'package_extract_file("%s.transfer.list"), '
+                            '"%s.new.dat", "%s.patch.dat") || '
+                            '(block_image_recover("%s", "%s") && '
+                            'block_image_verify("%s", '
+                            'package_extract_file("%s.transfer.list"), '
+                            '"%s.new.dat", "%s.patch.dat"))) then') % (
+                            self.device, ranges_str, self.src.TotalSha1(),
+                            self.device, partition, partition, partition,
+                            self.device, ranges_str,
+                            self.device, partition, partition, partition))
+      elif self.version == 3:
         script.AppendExtra(('if (range_sha1("%s", "%s") == "%s" || '
                             'block_image_verify("%s", '
                             'package_extract_file("%s.transfer.list"), '
@@ -1448,6 +1505,8 @@ def MakeRecoveryPatch(input_dir, output_sink, recovery_img, boot_img,
     output_sink("recovery-from-boot.p", patch)
 
   try:
+    # The following GetTypeAndDevice()s need to use the path in the target
+    # info_dict instead of source_info_dict.
     boot_type, boot_device = GetTypeAndDevice("/boot", info_dict)
     recovery_type, recovery_device = GetTypeAndDevice("/recovery", info_dict)
   except KeyError:

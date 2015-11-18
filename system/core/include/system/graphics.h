@@ -58,11 +58,6 @@ enum {
     HAL_PIXEL_FORMAT_RGB_565            = 4,
     HAL_PIXEL_FORMAT_BGRA_8888          = 5,
 
-    // Deprecated sRGB formats for source code compatibility
-    // Not for use in new code
-    HAL_PIXEL_FORMAT_sRGB_A_8888        = 0xC,
-    HAL_PIXEL_FORMAT_sRGB_X_8888        = 0xD,
-
     /*
      * 0x100 - 0x1FF
      *
@@ -152,7 +147,8 @@ enum {
      * When used with ANativeWindow, the dataSpace field describes the color
      * space of the buffer, except that dataSpace field
      * HAL_DATASPACE_DEPTH indicates that this buffer contains a depth
-     * image where each sample is a distance value measured by a depth camera.
+     * image where each sample is a distance value measured by a depth camera,
+     * plus an associated confidence value.
      */
     HAL_PIXEL_FORMAT_Y16    = 0x20363159,
 
@@ -193,9 +189,6 @@ enum {
      * extra metadata to define.
      */
     HAL_PIXEL_FORMAT_RAW16 = 0x20,
-
-    // Temporary alias for source code compatibility; do not use in new code
-    HAL_PIXEL_FORMAT_RAW_SENSOR = HAL_PIXEL_FORMAT_RAW16,
 
     /*
      * Android RAW10 format:
@@ -250,6 +243,56 @@ enum {
      * extra metadata to define.
      */
     HAL_PIXEL_FORMAT_RAW10 = 0x25,
+
+    /*
+     * Android RAW12 format:
+     *
+     * This format is exposed outside of camera HAL to applications.
+     *
+     * RAW12 is a single-channel, 12-bit per pixel, densely packed in each row,
+     * unprocessed format, usually representing raw Bayer-pattern images coming from
+     * an image sensor.
+     *
+     * In an image buffer with this format, starting from the first pixel of each
+     * row, each two consecutive pixels are packed into 3 bytes (24 bits). The first
+     * and second byte contains the top 8 bits of first and second pixel. The third
+     * byte contains the 4 least significant bits of the two pixels, the exact layout
+     * data for each two consecutive pixels is illustrated below (Pi[j] stands for
+     * the jth bit of the ith pixel):
+     *
+     *           bit 7                                            bit 0
+     *          ======|======|======|======|======|======|======|======|
+     * Byte 0: |P0[11]|P0[10]|P0[ 9]|P0[ 8]|P0[ 7]|P0[ 6]|P0[ 5]|P0[ 4]|
+     *         |------|------|------|------|------|------|------|------|
+     * Byte 1: |P1[11]|P1[10]|P1[ 9]|P1[ 8]|P1[ 7]|P1[ 6]|P1[ 5]|P1[ 4]|
+     *         |------|------|------|------|------|------|------|------|
+     * Byte 2: |P1[ 3]|P1[ 2]|P1[ 1]|P1[ 0]|P0[ 3]|P0[ 2]|P0[ 1]|P0[ 0]|
+     *          =======================================================
+     *
+     * This format assumes:
+     * - a width multiple of 4 pixels
+     * - an even height
+     * - a vertical stride equal to the height
+     * - strides are specified in bytes, not in pixels
+     *
+     *   size = stride * height
+     *
+     * When stride is equal to width * (12 / 8), there will be no padding bytes at
+     * the end of each row, the entire image data is densely packed. When stride is
+     * larger than width * (12 / 8), padding bytes will be present at the end of
+     * each row (including the last row).
+     *
+     * This format must be accepted by the gralloc module when used with the
+     * following usage flags:
+     *    - GRALLOC_USAGE_HW_CAMERA_*
+     *    - GRALLOC_USAGE_SW_*
+     *    - GRALLOC_USAGE_RENDERSCRIPT
+     *
+     * When used with ANativeWindow, the dataSpace field should be
+     * HAL_DATASPACE_ARBITRARY, as raw image sensor buffers require substantial
+     * extra metadata to define.
+     */
+    HAL_PIXEL_FORMAT_RAW12 = 0x26,
 
     /*
      * Android opaque RAW format:
@@ -316,18 +359,18 @@ enum {
     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED = 0x22,
 
     /*
-     * Android flexible YCbCr formats
+     * Android flexible YCbCr 4:2:0 formats
      *
-     * This format allows platforms to use an efficient YCbCr/YCrCb buffer
-     * layout, while still describing the buffer layout in a way accessible to
-     * the CPU in a device-independent manner.  While called YCbCr, it can be
+     * This format allows platforms to use an efficient YCbCr/YCrCb 4:2:0
+     * buffer layout, while still describing the general format in a
+     * layout-independent manner.  While called YCbCr, it can be
      * used to describe formats with either chromatic ordering, as well as
      * whole planar or semiplanar layouts.
      *
      * struct android_ycbcr (below) is the the struct used to describe it.
      *
      * This format must be accepted by the gralloc module when
-     * USAGE_HW_CAMERA_WRITE and USAGE_SW_READ_* are set.
+     * USAGE_SW_WRITE_* or USAGE_SW_READ_* are set.
      *
      * This format is locked for use by gralloc's (*lock_ycbcr) method, and
      * locking with the (*lock) method will return an error.
@@ -336,6 +379,62 @@ enum {
      * space of the buffer.
      */
     HAL_PIXEL_FORMAT_YCbCr_420_888 = 0x23,
+
+    /*
+     * Android flexible YCbCr 4:2:2 formats
+     *
+     * This format allows platforms to use an efficient YCbCr/YCrCb 4:2:2
+     * buffer layout, while still describing the general format in a
+     * layout-independent manner.  While called YCbCr, it can be
+     * used to describe formats with either chromatic ordering, as well as
+     * whole planar or semiplanar layouts.
+     *
+     * This format is currently only used by SW readable buffers
+     * produced by MediaCodecs, so the gralloc module can ignore this format.
+     */
+    HAL_PIXEL_FORMAT_YCbCr_422_888 = 0x27,
+
+    /*
+     * Android flexible YCbCr 4:4:4 formats
+     *
+     * This format allows platforms to use an efficient YCbCr/YCrCb 4:4:4
+     * buffer layout, while still describing the general format in a
+     * layout-independent manner.  While called YCbCr, it can be
+     * used to describe formats with either chromatic ordering, as well as
+     * whole planar or semiplanar layouts.
+     *
+     * This format is currently only used by SW readable buffers
+     * produced by MediaCodecs, so the gralloc module can ignore this format.
+     */
+    HAL_PIXEL_FORMAT_YCbCr_444_888 = 0x28,
+
+    /*
+     * Android flexible RGB 888 formats
+     *
+     * This format allows platforms to use an efficient RGB/BGR/RGBX/BGRX
+     * buffer layout, while still describing the general format in a
+     * layout-independent manner.  While called RGB, it can be
+     * used to describe formats with either color ordering and optional
+     * padding, as well as whole planar layout.
+     *
+     * This format is currently only used by SW readable buffers
+     * produced by MediaCodecs, so the gralloc module can ignore this format.
+     */
+    HAL_PIXEL_FORMAT_FLEX_RGB_888 = 0x29,
+
+    /*
+     * Android flexible RGBA 8888 formats
+     *
+     * This format allows platforms to use an efficient RGBA/BGRA/ARGB/ABGR
+     * buffer layout, while still describing the general format in a
+     * layout-independent manner.  While called RGBA, it can be
+     * used to describe formats with any of the component orderings, as
+     * well as whole planar layout.
+     *
+     * This format is currently only used by SW readable buffers
+     * produced by MediaCodecs, so the gralloc module can ignore this format.
+     */
+    HAL_PIXEL_FORMAT_FLEX_RGBA_8888 = 0x2A,
 
     /* Legacy formats (deprecated), used by ImageFormat.java */
     HAL_PIXEL_FORMAT_YCbCr_422_SP       = 0x10, // NV16
@@ -383,25 +482,31 @@ struct android_ycbcr {
  * When locking a native buffer of the above format and dataSpace value,
  * the vaddr pointer can be cast to this structure.
  *
- * A variable-length list of (x,y,z) 3D points, as floats.
+ * A variable-length list of (x,y,z, confidence) 3D points, as floats.  (x, y,
+ * z) represents a measured point's position, with the coordinate system defined
+ * by the data source.  Confidence represents the estimated likelihood that this
+ * measurement is correct. It is between 0.f and 1.f, inclusive, with 1.f ==
+ * 100% confidence.
  *
  * @num_points is the number of points in the list
  *
  * @xyz_points is the flexible array of floating-point values.
- *   It contains (num_points) * 3 floats.
+ *   It contains (num_points) * 4 floats.
  *
  *   For example:
  *     android_depth_points d = get_depth_buffer();
  *     struct {
- *       float x; float y; float z;
+ *       float x; float y; float z; float confidence;
  *     } firstPoint, lastPoint;
  *
- *     firstPoint.x = d.xyz_points[0];
- *     firstPoint.y = d.xyz_points[1];
- *     firstPoint.z = d.xyz_points[2];
- *     lastPoint.x = d.xyz_points[(d.num_points - 1) * 3 + 0];
- *     lastPoint.y = d.xyz_points[(d.num_points - 1) * 3 + 1];
- *     lastPoint.z = d.xyz_points[(d.num_points - 1) * 3 + 2];
+ *     firstPoint.x = d.xyzc_points[0];
+ *     firstPoint.y = d.xyzc_points[1];
+ *     firstPoint.z = d.xyzc_points[2];
+ *     firstPoint.confidence = d.xyzc_points[3];
+ *     lastPoint.x = d.xyzc_points[(d.num_points - 1) * 4 + 0];
+ *     lastPoint.y = d.xyzc_points[(d.num_points - 1) * 4 + 1];
+ *     lastPoint.z = d.xyzc_points[(d.num_points - 1) * 4 + 2];
+ *     lastPoint.confidence = d.xyzc_points[(d.num_points - 1) * 4 + 3];
  */
 
 struct android_depth_points {
@@ -410,7 +515,7 @@ struct android_depth_points {
     /** reserved for future use, set to 0 by gralloc's (*lock)() */
     uint32_t reserved[8];
 
-    float xyz_points[];
+    float xyzc_points[];
 };
 
 /**
@@ -632,9 +737,18 @@ typedef enum android_dataspace {
     /*
      * The buffer contains depth ranging measurements from a depth camera.
      * This value is valid with formats:
-     *    HAL_PIXEL_FORMAT_Y16: 16-bit single channel depth image.
+     *    HAL_PIXEL_FORMAT_Y16: 16-bit samples, consisting of a depth measurement
+     *       and an associated confidence value. The 3 MSBs of the sample make
+     *       up the confidence value, and the low 13 LSBs of the sample make up
+     *       the depth measurement.
+     *       For the confidence section, 0 means 100% confidence, 1 means 0%
+     *       confidence. The mapping to a linear float confidence value between
+     *       0.f and 1.f can be obtained with
+     *         float confidence = (((depthSample >> 13) - 1) & 0x7) / 7.0f;
+     *       The depth measurement can be extracted simply with
+     *         uint16_t range = (depthSample & 0x1FFF);
      *    HAL_PIXEL_FORMAT_BLOB: A depth point cloud, as
-     *       a variable-length float (x,y,z) coordinate point list.
+     *       a variable-length float (x,y,z, confidence) coordinate point list.
      *       The point cloud will be represented with the android_depth_points
      *       structure.
      */

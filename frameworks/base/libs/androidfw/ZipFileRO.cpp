@@ -68,6 +68,7 @@ ZipFileRO::~ZipFileRO() {
     const int32_t error = OpenArchive(zipFileName, &handle);
     if (error) {
         ALOGW("Error opening archive %s: %s", zipFileName, ErrorCodeString(error));
+        CloseArchive(handle);
         return NULL;
     }
 
@@ -125,8 +126,7 @@ bool ZipFileRO::getEntryInfo(ZipEntryRO entry, uint16_t* pMethod,
     return true;
 }
 
-bool ZipFileRO::startIteration(void** cookie)
-{
+bool ZipFileRO::startIteration(void** cookie) {
   return startIteration(cookie, NULL, NULL);
 }
 

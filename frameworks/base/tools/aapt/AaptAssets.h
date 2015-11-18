@@ -78,8 +78,6 @@ struct AaptLocaleValue {
 
      void writeTo(ResTable_config* out) const;
 
-     String8 toDirName() const;
-
      int compare(const AaptLocaleValue& other) const {
          return memcmp(this, &other, sizeof(AaptLocaleValue));
      }
@@ -462,8 +460,6 @@ public:
 
 private:
     bool check_valid_symbol_name(const String8& symbol, const SourcePos& pos, const char* label) {
-        //[Rover12421]
-        return true;
         if (valid_symbol_name(symbol)) {
             return true;
         }

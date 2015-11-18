@@ -27,32 +27,44 @@
     class Scoped ## NAME ## ArrayRO { \
     public: \
         explicit Scoped ## NAME ## ArrayRO(JNIEnv* env) \
-        : mEnv(env), mJavaArray(NULL), mRawArray(NULL) {} \
+        : mEnv(env), mJavaArray(NULL), mRawArray(NULL), mSize(0) {} \
         Scoped ## NAME ## ArrayRO(JNIEnv* env, PRIMITIVE_TYPE ## Array javaArray) \
-        : mEnv(env), mJavaArray(javaArray), mRawArray(NULL) { \
-            if (mJavaArray == NULL) { \
+        : mEnv(env) { \
+            if (javaArray == NULL) { \
+                mJavaArray = NULL; \
+                mSize = 0; \
+                mRawArray = NULL; \
                 jniThrowNullPointerException(mEnv, NULL); \
             } else { \
-                mRawArray = mEnv->Get ## NAME ## ArrayElements(mJavaArray, NULL); \
+                reset(javaArray); \
             } \
         } \
         ~Scoped ## NAME ## ArrayRO() { \
-            if (mRawArray) { \
+            if (mRawArray != NULL && mRawArray != mBuffer) { \
                 mEnv->Release ## NAME ## ArrayElements(mJavaArray, mRawArray, JNI_ABORT); \
             } \
         } \
         void reset(PRIMITIVE_TYPE ## Array javaArray) { \
             mJavaArray = javaArray; \
-            mRawArray = mEnv->Get ## NAME ## ArrayElements(mJavaArray, NULL); \
+            mSize = mEnv->GetArrayLength(mJavaArray); \
+            if (mSize <= buffer_size) { \
+                mEnv->Get ## NAME ## ArrayRegion(mJavaArray, 0, mSize, mBuffer); \
+                mRawArray = mBuffer; \
+            } else { \
+                mRawArray = mEnv->Get ## NAME ## ArrayElements(mJavaArray, NULL); \
+            } \
         } \
         const PRIMITIVE_TYPE* get() const { return mRawArray; } \
         PRIMITIVE_TYPE ## Array getJavaArray() const { return mJavaArray; } \
         const PRIMITIVE_TYPE& operator[](size_t n) const { return mRawArray[n]; } \
-        size_t size() const { return mEnv->GetArrayLength(mJavaArray); } \
+        size_t size() const { return mSize; } \
     private: \
+        static const jsize buffer_size = 1024; \
         JNIEnv* const mEnv; \
         PRIMITIVE_TYPE ## Array mJavaArray; \
         PRIMITIVE_TYPE* mRawArray; \
+        jsize mSize; \
+        PRIMITIVE_TYPE mBuffer[buffer_size]; \
         DISALLOW_COPY_AND_ASSIGN(Scoped ## NAME ## ArrayRO); \
     }
 

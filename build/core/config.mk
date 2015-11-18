@@ -23,6 +23,10 @@ define newline
 
 
 endef
+# The pound character "#"
+define pound
+#
+endef
 # Unfortunately you can't simply define backslash as \ or \\.
 backslash := \a
 backslash := $(patsubst %a,%,$(backslash))
@@ -38,6 +42,7 @@ SRC_DOCS:= $(TOPDIR)docs
 # TODO: See if we can remove most of these from the global list.
 SRC_HEADERS := \
 	$(TOPDIR)system/core/include \
+	$(TOPDIR)system/media/audio/include \
 	$(TOPDIR)hardware/libhardware/include \
 	$(TOPDIR)hardware/libhardware_legacy/include \
 	$(TOPDIR)hardware/ril/include \
@@ -108,6 +113,16 @@ BUILD_HOST_DALVIK_STATIC_JAVA_LIBRARY := $(BUILD_SYSTEM)/host_dalvik_static_java
 SHOW_COMMANDS:= $(filter showcommands,$(MAKECMDGOALS))
 hide := $(if $(SHOW_COMMANDS),,@)
 
+################################################################
+# Tools needed in product configuration makefiles.
+################################################################
+NORMALIZE_PATH := build/tools/normalize_path.py
+
+# $(1): the paths to be normalized
+define normalize-paths
+$(if $(1),$(shell $(NORMALIZE_PATH) $(1)))
+endef
+
 # ###############################################################
 # Set common values
 # ###############################################################
@@ -116,8 +131,12 @@ hide := $(if $(SHOW_COMMANDS),,@)
 COMMON_GLOBAL_CFLAGS:= -DANDROID -fmessage-length=0 -W -Wall -Wno-unused -Winit-self -Wpointer-arith
 COMMON_RELEASE_CFLAGS:= -DNDEBUG -UDEBUG
 
-COMMON_GLOBAL_CPPFLAGS:= $(COMMON_GLOBAL_CFLAGS) -Wsign-promo
-COMMON_RELEASE_CPPFLAGS:= $(COMMON_RELEASE_CFLAGS)
+# Force gcc to always output color diagnostics.  Ninja will strip the ANSI
+# color codes if it is not running in a terminal.
+COMMON_GLOBAL_CFLAGS += -fdiagnostics-color
+
+COMMON_GLOBAL_CPPFLAGS:= -Wsign-promo
+COMMON_RELEASE_CPPFLAGS:=
 
 GLOBAL_CFLAGS_NO_OVERRIDE := \
     -Werror=int-to-pointer-cast \
@@ -163,6 +182,23 @@ endif
 # are specific to the user's build configuration.
 include $(BUILD_SYSTEM)/envsetup.mk
 
+# Pruned directory options used when using findleaves.py
+# See envsetup.mk for a description of SCAN_EXCLUDE_DIRS
+FIND_LEAVES_EXCLUDES := $(addprefix --prune=, $(OUT_DIR) $(SCAN_EXCLUDE_DIRS) .repo .git)
+
+# ---------------------------------------------------------------
+# We run gcc/clang with PWD=/proc/self/cwd to remove the $TOP
+# from the debug output. That way two builds in two different
+# directories will create the same output.
+# /proc doesn't exist on Darwin.
+ifeq ($(HOST_OS),linux)
+RELATIVE_PWD := PWD=/proc/self/cwd
+# Remove this useless prefix from the debug output.
+COMMON_GLOBAL_CFLAGS += -fdebug-prefix-map=/proc/self/cwd=
+else
+RELATIVE_PWD :=
+endif
+
 # ---------------------------------------------------------------
 # Allow the C/C++ macros __DATE__ and __TIME__ to be set to the
 # build date and time, so that a build may be repeated.
@@ -177,7 +213,6 @@ BUILD_DATETIME_C_TIME := $$(cat $(OUT_DIR)/build_c_time.txt)
 
 ifeq ($(OVERRIDE_C_DATE_TIME),true)
 COMMON_GLOBAL_CFLAGS += -Wno-builtin-macro-redefined -D__DATE__="\"$(BUILD_DATETIME_C_DATE)\"" -D__TIME__=\"$(BUILD_DATETIME_C_TIME)\"
-COMMON_GLOBAL_CPPFLAGS += -Wno-builtin-macro-redefined -D__DATE__="\"$(BUILD_DATETIME_C_DATE)\"" -D__TIME__=\"$(BUILD_DATETIME_C_TIME)\"
 endif
 
 # The build system exposes several variables for where to find the kernel
@@ -246,9 +281,16 @@ ifeq ($(TARGET_CPU_ABI),)
 endif
 TARGET_CPU_ABI2 := $(strip $(TARGET_CPU_ABI2))
 
-# $(1): os/arch
-define select-android-config-h
-build/core/combo/include/arch/$(1)/AndroidConfig.h
+# Commands to generate .toc file common to ELF .so files.
+define _gen_toc_command_for_elf
+$(hide) ($($(PRIVATE_2ND_ARCH_VAR_PREFIX)$(PRIVATE_PREFIX)READELF) -d $(1) | grep SONAME || echo "No SONAME for $1") > $(2)
+$(hide) $($(PRIVATE_2ND_ARCH_VAR_PREFIX)$(PRIVATE_PREFIX)NM) -gD -f p $(1) | cut -f1-2 -d" " >> $(2)
+endef
+
+# Commands to generate .toc file from Darwin dynamic library.
+define _gen_toc_command_for_macho
+$(hide) otool -l $(1) | grep LC_ID_DYLIB -A 5 > $(2)
+$(hide) nm -gP $(1) | cut -f1-2 -d" " | grep -v U$$ >> $(2)
 endef
 
 combo_target := HOST_
@@ -259,6 +301,13 @@ include $(BUILD_SYSTEM)/combo/select.mk
 ifdef HOST_2ND_ARCH
 combo_target := HOST_
 combo_2nd_arch_prefix := $(HOST_2ND_ARCH_VAR_PREFIX)
+include $(BUILD_SYSTEM)/combo/select.mk
+endif
+
+# Load the windows cross compiler under Linux
+ifdef HOST_CROSS_OS
+combo_target := HOST_CROSS_
+combo_2nd_arch_prefix :=
 include $(BUILD_SYSTEM)/combo/select.mk
 endif
 
@@ -400,9 +449,7 @@ endif
 # Generic tools.
 JACK := $(HOST_OUT_EXECUTABLES)/jack
 JACK_JAR := $(HOST_OUT_JAVA_LIBRARIES)/jack.jar
-JACK_LAUNCHER_JAR := $(HOST_OUT_JAVA_LIBRARIES)/jack-launcher.jar
 JILL_JAR := $(HOST_OUT_JAVA_LIBRARIES)/jill.jar
-JACK_MULTIDEX_DEFAULT_PREPROCESSOR := frameworks/multidex/library/resources/JACK-INF/legacyMultidexInstallation.jpp
 
 LEX := prebuilts/misc/$(BUILD_OS)-$(HOST_PREBUILT_ARCH)/flex/flex-2.5.39
 # The default PKGDATADIR built in the prebuilt bison is a relative path
@@ -418,6 +465,13 @@ YASM := prebuilts/misc/$(BUILD_OS)-$(HOST_PREBUILT_ARCH)/yasm/yasm
 DOXYGEN:= doxygen
 AAPT := $(HOST_OUT_EXECUTABLES)/aapt$(HOST_EXECUTABLE_SUFFIX)
 AIDL := $(HOST_OUT_EXECUTABLES)/aidl$(HOST_EXECUTABLE_SUFFIX)
+AIDL_CPP := $(HOST_OUT_EXECUTABLES)/aidl-cpp$(HOST_EXECUTABLE_SUFFIX)
+ifeq ($(HOST_OS),linux)
+BREAKPAD_DUMP_SYMS := $(HOST_OUT_EXECUTABLES)/dump_syms
+else
+# For non-supported hosts, do not generate breakpad symbols.
+BREAKPAD_GENERATE_SYMBOLS := false
+endif
 PROTOC := $(HOST_OUT_EXECUTABLES)/aprotoc$(HOST_EXECUTABLE_SUFFIX)
 DBUS_GENERATOR := $(HOST_OUT_EXECUTABLES)/dbus-binding-generator
 SIGNAPK_JAR := $(HOST_OUT_JAVA_LIBRARIES)/signapk$(COMMON_JAVA_PACKAGE_SUFFIX)
@@ -454,27 +508,6 @@ DEFAULT_JACK_ENABLED:=full
 else
 DEFAULT_JACK_ENABLED:=
 endif
-ifneq ($(strip $(ANDROID_JACK_VM)),)
-JACK_VM := $(ANDROID_JACK_VM)
-else
-JACK_VM := java
-endif
-# call jack
-#
-# $(1): vm arguments
-# $(2): jack perf arguments
-ifneq (,$(strip $(filter dist,$(MAKECMDGOALS))))
-JACK_SERVER_LOG_COMMAND := mkdir -p $(DIST_DIR)/logs/; SERVER_LOG=$(DIST_DIR)/logs/jack-server.log
-endif
-define call-jack
-$(JACK_SERVER_LOG_COMMAND) JACK_VM_COMMAND="$(JACK_VM) $(1) $(JAVA_TMPDIR_ARG) -jar $(JACK_LAUNCHER_JAR) " JACK_JAR="$(JACK_JAR)" $(JACK) $(2)
-endef
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JACK_VM_ARGS := $(DEFAULT_JACK_VM_ARGS)
-ifneq ($(ANDROID_JACK_VM_ARGS),)
-DEFAULT_JACK_VM_ARGS := $(ANDROID_JACK_VM_ARGS)
-else
-DEFAULT_JACK_VM_ARGS := -Dfile.encoding=UTF-8 -Xms2560m -XX:+TieredCompilation
-endif
 ifneq ($(ANDROID_JACK_EXTRA_ARGS),)
 DEFAULT_JACK_EXTRA_ARGS := $(ANDROID_JACK_EXTRA_ARGS)
 else
@@ -483,7 +516,7 @@ endif
 # Turn off jack warnings by default.
 DEFAULT_JACK_EXTRA_ARGS += --verbose error
 
-JILL := java -jar $(JILL_JAR)
+JILL := java -Xmx3500m -jar $(JILL_JAR)
 PROGUARD := external/proguard/bin/proguard.sh
 JAVATAGS := build/tools/java-event-log-tags.py
 LLVM_RS_CC := $(HOST_OUT_EXECUTABLES)/llvm-rs-cc$(HOST_EXECUTABLE_SUFFIX)
@@ -493,6 +526,9 @@ APPEND2SIMG := $(HOST_OUT_EXECUTABLES)/append2simg
 VERITY_SIGNER := $(HOST_OUT_EXECUTABLES)/verity_signer
 BUILD_VERITY_TREE := $(HOST_OUT_EXECUTABLES)/build_verity_tree
 BOOT_SIGNER := $(HOST_OUT_EXECUTABLES)/boot_signer
+FUTILITY := prebuilts/misc/$(BUILD_OS)-$(HOST_PREBUILT_ARCH)/futility/futility
+VBOOT_SIGNER := prebuilts/misc/scripts/vboot_signer/vboot_signer.sh
+FEC := $(HOST_OUT_EXECUTABLES)/fec
 
 # ACP is always for the build OS, not for the host OS
 ACP := $(BUILD_OUT_EXECUTABLES)/acp$(BUILD_EXECUTABLE_SUFFIX)
@@ -500,6 +536,9 @@ ACP := $(BUILD_OUT_EXECUTABLES)/acp$(BUILD_EXECUTABLE_SUFFIX)
 # dx is java behind a shell script; no .exe necessary.
 DX := $(HOST_OUT_EXECUTABLES)/dx
 ZIPALIGN := $(HOST_OUT_EXECUTABLES)/zipalign$(HOST_EXECUTABLE_SUFFIX)
+ifndef TARGET_BUILD_APPS
+ZIPTIME := $(HOST_OUT_EXECUTABLES)/ziptime$(HOST_EXECUTABLE_SUFFIX)
+endif
 
 # relocation packer
 RELOCATION_PACKER := prebuilts/misc/$(BUILD_OS)-$(HOST_PREBUILT_ARCH)/relocation_packer/relocation_packer
@@ -515,11 +554,13 @@ YACC_HEADER_SUFFIX:= .hpp
 
 COLUMN:= column
 
+# We may not have the right JAVA_HOME/PATH set up yet when this is run from envsetup.sh.
+ifneq ($(CALLED_FROM_SETUP),true)
 HOST_JDK_TOOLS_JAR:= $(shell $(BUILD_SYSTEM)/find-jdk-tools-jar.sh)
 
 ifneq ($(HOST_JDK_TOOLS_JAR),)
 ifeq ($(wildcard $(HOST_JDK_TOOLS_JAR)),)
-$(error Error: could not find jdk tools.jar, please check if your JDK was installed correctly)
+$(error Error: could not find jdk tools.jar at $(HOST_JDK_TOOLS_JAR), please check if your JDK was installed correctly)
 endif
 endif
 
@@ -528,6 +569,7 @@ HOST_JDK_IS_64BIT_VERSION :=
 ifneq ($(filter 64-Bit, $(shell java -version 2>&1)),)
 HOST_JDK_IS_64BIT_VERSION := true
 endif
+endif  # CALLED_FROM_SETUP not true
 
 # It's called md5 on Mac OS and md5sum on Linux
 ifeq ($(HOST_OS),darwin)
@@ -576,7 +618,6 @@ TARGET_PROJECT_INCLUDES:= $(SRC_HEADERS) $(TARGET_OUT_HEADERS) \
 # sure to only specify them for the target compilers checked in to
 # the source tree.
 TARGET_GLOBAL_CFLAGS += $(TARGET_ERROR_FLAGS)
-TARGET_GLOBAL_CPPFLAGS += $(TARGET_ERROR_FLAGS)
 
 HOST_GLOBAL_CFLAGS += $(HOST_RELEASE_CFLAGS)
 HOST_GLOBAL_CPPFLAGS += $(HOST_RELEASE_CPPFLAGS)
@@ -592,7 +633,6 @@ $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_RELEASE_CPPFLAGS += $(COMMON_RELEASE_CPPFLAG
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_LD_DIRS += -L$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATE_LIBRARIES)
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_PROJECT_INCLUDES := $(TARGET_PROJECT_INCLUDES)
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_CFLAGS += $(TARGET_ERROR_FLAGS)
-$(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_CPPFLAGS += $(TARGET_ERROR_FLAGS)
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_CFLAGS += $($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_RELEASE_CFLAGS)
 $(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_GLOBAL_CPPFLAGS += $($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_RELEASE_CPPFLAGS)
 endif
@@ -608,27 +648,31 @@ $(HOST_2ND_ARCH_VAR_PREFIX)HOST_GLOBAL_CFLAGS += $($(HOST_2ND_ARCH_VAR_PREFIX)HO
 $(HOST_2ND_ARCH_VAR_PREFIX)HOST_GLOBAL_CPPFLAGS += $($(HOST_2ND_ARCH_VAR_PREFIX)HOST_RELEASE_CPPFLAGS)
 endif
 
+ifdef HOST_CROSS_OS
+HOST_CROSS_GLOBAL_CFLAGS += $(filter-out $(HOST_CROSS_UNKNOWN_CFLAGS),$(COMMON_GLOBAL_CFLAGS))
+HOST_CROSS_RELEASE_CFLAGS += $(COMMON_RELEASE_CFLAGS)
+HOST_CROSS_GLOBAL_CPPFLAGS += $(COMMON_GLOBAL_CPPFLAGS)
+HOST_CROSS_RELEASE_CPPFLAGS += $(COMMON_RELEASE_CPPFLAGS)
+HOST_CROSS_GLOBAL_LD_DIRS += -L$(HOST_CROSS_OUT_INTERMEDIATE_LIBRARIES)
+HOST_CROSS_PROJECT_INCLUDES:= $(SRC_HEADERS) $(SRC_HOST_HEADERS) $(HOST_CROSS_OUT_HEADERS)
+HOST_CROSS_GLOBAL_CFLAGS += $(HOST_CROSS_RELEASE_CFLAGS)
+HOST_CROSS_GLOBAL_CPPFLAGS += $(HOST_CROSS_RELEASE_CPPFLAGS)
+endif
+
 # allow overriding default Java libraries on a per-target basis
 ifeq ($(TARGET_DEFAULT_JAVA_LIBRARIES),)
   TARGET_DEFAULT_JAVA_LIBRARIES := core-libart core-junit ext framework okhttp
 endif
 
 # Flags for DEX2OAT
+first_non_empty_of_three = $(if $(1),$(1),$(if $(2),$(2),$(3)))
 DEX2OAT_TARGET_ARCH := $(TARGET_ARCH)
-ifeq ($(TARGET_CPU_VARIANT),)
-ifeq ($(TARGET_ARCH_VARIANT),)
-DEX2OAT_TARGET_CPU_VARIANT := default
-else
-DEX2OAT_TARGET_CPU_VARIANT := $(TARGET_ARCH_VARIANT)
-endif
-else
-DEX2OAT_TARGET_CPU_VARIANT := $(TARGET_CPU_VARIANT)
-endif
+DEX2OAT_TARGET_CPU_VARIANT := $(call first_non_empty_of_three,$(TARGET_CPU_VARIANT),$(TARGET_ARCH_VARIANT),default)
 DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := default
 
 ifdef TARGET_2ND_ARCH
 $(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH := $(TARGET_2ND_ARCH)
-$(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_CPU_VARIANT := $(TARGET_2ND_CPU_VARIANT)
+$(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_CPU_VARIANT := $(call first_non_empty_of_three,$(TARGET_2ND_CPU_VARIANT),$(TARGET_2ND_ARCH_VARIANT),default)
 $(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := default
 endif
 
@@ -642,6 +686,13 @@ include $(BUILD_SYSTEM)/clang/config.mk
 
 HISTORICAL_SDK_VERSIONS_ROOT := $(TOPDIR)prebuilts/sdk
 HISTORICAL_NDK_VERSIONS_ROOT := $(TOPDIR)prebuilts/ndk
+
+# The path where app can reference the support library resources.
+ifdef TARGET_BUILD_APPS
+SUPPORT_LIBRARY_ROOT := $(HISTORICAL_SDK_VERSIONS_ROOT)/current/support
+else
+SUPPORT_LIBRARY_ROOT := frameworks/support
+endif
 
 # Historical SDK version N is stored in $(HISTORICAL_SDK_VERSIONS_ROOT)/N.
 # The 'current' version is whatever this source tree is.
@@ -681,8 +732,12 @@ endif
 # Set up RS prebuilt variables for compatibility library
 
 RS_PREBUILT_CLCORE := prebuilts/sdk/renderscript/lib/$(TARGET_ARCH)/librsrt_$(TARGET_ARCH).bc
-RS_PREBUILT_LIBPATH := -L prebuilts/ndk/8/platforms/android-9/arch-$(TARGET_ARCH)/usr/lib
 RS_PREBUILT_COMPILER_RT := prebuilts/sdk/renderscript/lib/$(TARGET_ARCH)/libcompiler_rt.a
+ifeq (true,$(TARGET_IS_64_BIT))
+RS_PREBUILT_LIBPATH := -L prebuilts/ndk/current/platforms/android-21/arch-$(TARGET_ARCH)/usr/lib
+else
+RS_PREBUILT_LIBPATH := -L prebuilts/ndk/current/platforms/android-9/arch-$(TARGET_ARCH)/usr/lib
+endif
 
 # API Level lists for Renderscript Compat lib.
 RSCOMPAT_32BIT_ONLY_API_LEVELS := 8 9 10 11 12 13 14 15 16 17 18 19 20

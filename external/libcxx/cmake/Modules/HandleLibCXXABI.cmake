@@ -15,9 +15,9 @@
 #   abidirs   : A list of relative paths to create under an include directory
 #               in the libc++ build directory.
 #
-macro(setup_abi_lib abipathvar abidefines abilib abifiles abidirs)
+macro(setup_abi_lib abidefines abilib abifiles abidirs)
   list(APPEND LIBCXX_COMPILE_FLAGS ${abidefines})
-  set(${abipathvar} "${${abipathvar}}"
+  set(LIBCXX_CXX_ABI_INCLUDE_PATHS "${LIBCXX_CXX_ABI_INCLUDE_PATHS}"
     CACHE PATH
     "Paths to C++ ABI header directories separated by ';'." FORCE
     )
@@ -33,7 +33,7 @@ macro(setup_abi_lib abipathvar abidefines abilib abifiles abidirs)
 
   foreach(fpath ${LIBCXX_ABILIB_FILES})
     set(found FALSE)
-    foreach(incpath ${${abipathvar}})
+    foreach(incpath ${LIBCXX_CXX_ABI_INCLUDE_PATHS})
       if (EXISTS "${incpath}/${fpath}")
         set(found TRUE)
         get_filename_component(dstdir ${fpath} PATH)
@@ -58,6 +58,21 @@ macro(setup_abi_lib abipathvar abidefines abilib abifiles abidirs)
 
 endmacro()
 
+# Setup the default options if LIBCXX_CXX_ABI is not specified.
+if (NOT LIBCXX_CXX_ABI)
+  if (NOT DEFINED LIBCXX_BUILT_STANDALONE AND
+      IS_DIRECTORY "${CMAKE_SOURCE_DIR}/projects/libcxxabi")
+    set(LIBCXX_CXX_ABI_LIBNAME "libcxxabi")
+    set(LIBCXX_CXX_ABI_INCLUDE_PATHS "${CMAKE_SOURCE_DIR}/projects/libcxxabi/include")
+    set(LIBCXX_CXX_ABI_INTREE 1)
+  else ()
+    set(LIBCXX_CXX_ABI_LIBNAME "none")
+  endif ()
+else ()
+  set(LIBCXX_CXX_ABI_LIBNAME "${LIBCXX_CXX_ABI}")
+endif ()
+
+# Configure based on the selected ABI library.
 if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
     "${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libsupc++")
   set(_LIBSUPCXX_INCLUDE_FILES
@@ -71,7 +86,7 @@ if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
     set(_LIBSUPCXX_DEFINES "")
     set(_LIBSUPCXX_LIBNAME supc++)
   endif()
-  setup_abi_lib("LIBCXX_LIBSUPCXX_INCLUDE_PATHS"
+  setup_abi_lib(
     "-D__GLIBCXX__ ${_LIBSUPCXX_DEFINES}"
     "${_LIBSUPCXX_LIBNAME}" "${_LIBSUPCXX_INCLUDE_FILES}" "bits"
     )
@@ -88,11 +103,11 @@ elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxabi")
     # Assume c++abi is installed in the system, rely on -lc++abi link flag.
     set(CXXABI_LIBNAME "c++abi")
   endif()
-  setup_abi_lib("LIBCXX_LIBCXXABI_INCLUDE_PATHS" ""
+  setup_abi_lib("-DLIBCXX_BUILDING_LIBCXXABI"
     ${CXXABI_LIBNAME} "cxxabi.h;__cxxabi_config.h" ""
     )
 elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxrt")
-  setup_abi_lib("LIBCXX_LIBCXXRT_INCLUDE_PATHS" "-DLIBCXXRT"
+  setup_abi_lib("-DLIBCXXRT"
     "cxxrt" "cxxabi.h;unwind.h;unwind-arm.h;unwind-itanium.h" ""
     )
 elseif (NOT "${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "none")

@@ -17,6 +17,8 @@
 #ifndef ANDROID_PARCEL_H
 #define ANDROID_PARCEL_H
 
+#include <vector>
+
 #include <cutils/native_handle.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
@@ -24,6 +26,8 @@
 #include <utils/Vector.h>
 #include <utils/Flattenable.h>
 #include <linux/binder.h>
+
+#include <binder/IInterface.h>
 
 // ---------------------------------------------------------------------------
 namespace android {
@@ -60,6 +64,7 @@ public:
     status_t            appendFrom(const Parcel *parcel,
                                    size_t start, size_t len);
 
+    bool                allowFds() const;
     bool                pushAllowFds(bool allowFds);
     void                restoreAllowFds(bool lastValue);
 
@@ -107,6 +112,20 @@ public:
     status_t            writeWeakBinder(const wp<IBinder>& val);
     status_t            writeInt32Array(size_t len, const int32_t *val);
     status_t            writeByteArray(size_t len, const uint8_t *val);
+    status_t            writeBool(bool val);
+    status_t            writeChar(char16_t val);
+    status_t            writeByte(int8_t val);
+
+    status_t            writeByteVector(const std::vector<int8_t>& val);
+    status_t            writeInt32Vector(const std::vector<int32_t>& val);
+    status_t            writeInt64Vector(const std::vector<int64_t>& val);
+    status_t            writeFloatVector(const std::vector<float>& val);
+    status_t            writeDoubleVector(const std::vector<double>& val);
+    status_t            writeBoolVector(const std::vector<bool>& val);
+    status_t            writeCharVector(const std::vector<char16_t>& val);
+    status_t            writeString16Vector(const std::vector<String16>& val);
+
+    status_t            writeStrongBinderVector(const std::vector<sp<IBinder>>& val);
 
     template<typename T>
     status_t            write(const Flattenable<T>& val);
@@ -117,7 +136,7 @@ public:
 
     // Place a native_handle into the parcel (the native_handle's file-
     // descriptors are dup'ed, so it is safe to delete the native_handle
-    // when this function returns). 
+    // when this function returns).
     // Doesn't take ownership of the native_handle.
     status_t            writeNativeHandle(const native_handle* handle);
     
@@ -130,16 +149,18 @@ public:
     // will be closed once the parcel is destroyed.
     status_t            writeDupFileDescriptor(int fd);
 
-    // Writes a raw fd and optional comm channel fd to the parcel as a ParcelFileDescriptor.
-    // A dup's of the fds are made, which will be closed once the parcel is destroyed.
-    // Null values are passed as -1.
-    status_t            writeParcelFileDescriptor(int fd, int commChannel = -1);
-
     // Writes a blob to the parcel.
     // If the blob is small, then it is stored in-place, otherwise it is
-    // transferred by way of an anonymous shared memory region.
+    // transferred by way of an anonymous shared memory region.  Prefer sending
+    // immutable blobs if possible since they may be subsequently transferred between
+    // processes without further copying whereas mutable blobs always need to be copied.
     // The caller should call release() on the blob after writing its contents.
-    status_t            writeBlob(size_t len, WritableBlob* outBlob);
+    status_t            writeBlob(size_t len, bool mutableCopy, WritableBlob* outBlob);
+
+    // Write an existing immutable blob file descriptor to the parcel.
+    // This allows the client to send the same blob to multiple processes
+    // as long as it keeps a dup of the blob file descriptor handy for later.
+    status_t            writeDupImmutableBlobFileDescriptor(int fd);
 
     status_t            writeObject(const flat_binder_object& val, bool nullMetaData);
 
@@ -166,13 +187,35 @@ public:
     status_t            readDouble(double *pArg) const;
     intptr_t            readIntPtr() const;
     status_t            readIntPtr(intptr_t *pArg) const;
+    bool                readBool() const;
+    status_t            readBool(bool *pArg) const;
+    char16_t            readChar() const;
+    status_t            readChar(char16_t *pArg) const;
+    int8_t              readByte() const;
+    status_t            readByte(int8_t *pArg) const;
 
     const char*         readCString() const;
     String8             readString8() const;
     String16            readString16() const;
+    status_t            readString16(String16* pArg) const;
     const char16_t*     readString16Inplace(size_t* outLen) const;
     sp<IBinder>         readStrongBinder() const;
+    status_t            readStrongBinder(sp<IBinder>* val) const;
     wp<IBinder>         readWeakBinder() const;
+
+    template<typename T>
+    status_t            readStrongBinder(sp<T>* val) const;
+
+    status_t            readStrongBinderVector(std::vector<sp<IBinder>>* val) const;
+
+    status_t            readByteVector(std::vector<int8_t>* val) const;
+    status_t            readInt32Vector(std::vector<int32_t>* val) const;
+    status_t            readInt64Vector(std::vector<int64_t>* val) const;
+    status_t            readFloatVector(std::vector<float>* val) const;
+    status_t            readDoubleVector(std::vector<double>* val) const;
+    status_t            readBoolVector(std::vector<bool>* val) const;
+    status_t            readCharVector(std::vector<char16_t>* val) const;
+    status_t            readString16Vector(std::vector<String16>* val) const;
 
     template<typename T>
     status_t            read(Flattenable<T>& val) const;
@@ -197,11 +240,6 @@ public:
     // Retrieve a file descriptor from the parcel.  This returns the raw fd
     // in the parcel, which you do not own -- use dup() to get your own copy.
     int                 readFileDescriptor() const;
-
-    // Reads a ParcelFileDescriptor from the parcel.  Returns the raw fd as
-    // the result, and the optional comm channel fd in outCommChannel.
-    // Null values are returned as -1.
-    int                 readParcelFileDescriptor(int& outCommChannel) const;
 
     // Reads a blob from the parcel.
     // The caller should call release() on the blob after reading its contents.
@@ -280,16 +318,19 @@ private:
         Blob();
         ~Blob();
 
+        void clear();
         void release();
         inline size_t size() const { return mSize; }
+        inline int fd() const { return mFd; };
+        inline bool isMutable() const { return mMutable; }
 
     protected:
-        void init(bool mapped, void* data, size_t size);
-        void clear();
+        void init(int fd, void* data, size_t size, bool isMutable);
 
-        bool mMapped;
+        int mFd; // owned by parcel so not closed when released
         void* mData;
         size_t mSize;
+        bool mMutable;
     };
 
     class FlattenableHelperInterface {
@@ -330,6 +371,7 @@ public:
         friend class Parcel;
     public:
         inline const void* data() const { return mData; }
+        inline void* mutableData() { return isMutable() ? mData : NULL; }
     };
 
     class WritableBlob : public Blob {
@@ -337,6 +379,12 @@ public:
     public:
         inline void* data() { return mData; }
     };
+
+private:
+    size_t mBlobAshmemSize;
+
+public:
+    size_t getBlobAshmemSize() const;
 };
 
 // ---------------------------------------------------------------------------
@@ -390,6 +438,22 @@ status_t Parcel::read(LightFlattenable<T>& val) const {
                 val.unflatten(buffer, size);
     }
     return NO_ERROR;
+}
+
+template<typename T>
+status_t Parcel::readStrongBinder(sp<T>* val) const {
+    sp<IBinder> tmp;
+    status_t ret = readStrongBinder(&tmp);
+
+    if (ret == OK) {
+        *val = interface_cast<T>(tmp);
+
+        if (val->get() == nullptr) {
+            return UNKNOWN_ERROR;
+        }
+    }
+
+    return ret;
 }
 
 // ---------------------------------------------------------------------------

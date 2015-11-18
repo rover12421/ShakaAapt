@@ -28,8 +28,9 @@
 # $(call ) isn't necessary.
 #
 define _find-android-products-files
-$(shell test -d device && find device -maxdepth 6 -name AndroidProducts.mk) \
-  $(shell test -d vendor && find vendor -maxdepth 6 -name AndroidProducts.mk) \
+$(sort $(shell test -d device && find -L device -maxdepth 6 -name AndroidProducts.mk)) \
+  $(sort $(shell test -d vendor && find -L vendor -maxdepth 6 -name AndroidProducts.mk)) \
+  $(sort $(shell test -d product && find -L product -maxdepth 6 -name AndroidProducts.mk)) \
   $(SRC_TARGET_DIR)/product/AndroidProducts.mk
 endef
 
@@ -97,10 +98,15 @@ _product_var_list := \
     PRODUCT_RESTRICT_VENDOR_FILES \
     PRODUCT_VENDOR_KERNEL_HEADERS \
     PRODUCT_BOOT_JARS \
+    PRODUCT_SUPPORTS_BOOT_SIGNER \
+    PRODUCT_SUPPORTS_VBOOT \
     PRODUCT_SUPPORTS_VERITY \
+    PRODUCT_SUPPORTS_VERITY_FEC \
     PRODUCT_OEM_PROPERTIES \
     PRODUCT_SYSTEM_PROPERTY_BLACKLIST \
     PRODUCT_SYSTEM_SERVER_JARS \
+    PRODUCT_VBOOT_SIGNING_KEY \
+    PRODUCT_VBOOT_SIGNING_SUBKEY \
     PRODUCT_VERITY_SIGNING_KEY \
     PRODUCT_SYSTEM_VERITY_PARTITION \
     PRODUCT_VENDOR_VERITY_PARTITION \
@@ -129,11 +135,14 @@ endef
 #  3. Records that we've visited this node, in ALL_PRODUCTS
 #
 define inherit-product
+  $(if $(findstring ../,$(1)),\
+    $(eval np := $(call normalize-paths,$(1))),\
+    $(eval np := $(strip $(1))))\
   $(foreach v,$(_product_var_list), \
-      $(eval $(v) := $($(v)) $(INHERIT_TAG)$(strip $(1)))) \
+      $(eval $(v) := $($(v)) $(INHERIT_TAG)$(np))) \
   $(eval inherit_var := \
       PRODUCTS.$(strip $(word 1,$(_include_stack))).INHERITS_FROM) \
-  $(eval $(inherit_var) := $(sort $($(inherit_var)) $(strip $(1)))) \
+  $(eval $(inherit_var) := $(sort $($(inherit_var)) $(np))) \
   $(eval inherit_var:=) \
   $(eval ALL_PRODUCTS := $(sort $(ALL_PRODUCTS) $(word 1,$(_include_stack))))
 endef
@@ -234,7 +243,6 @@ _product_stash_var_list := $(_product_var_list) \
 	TARGET_NO_RECOVERY \
 	TARGET_NO_RADIOIMAGE \
 	TARGET_HARDWARE_3D \
-	TARGET_PROVIDES_INIT_RC \
 	TARGET_CPU_ABI \
 	TARGET_CPU_ABI2 \
 

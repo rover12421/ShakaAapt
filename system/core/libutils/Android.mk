@@ -15,12 +15,9 @@
 LOCAL_PATH:= $(call my-dir)
 
 commonSources:= \
-	BasicHashtable.cpp \
-	BlobCache.cpp \
 	CallStack.cpp \
 	FileMap.cpp \
 	JenkinsHash.cpp \
-	LinearAllocator.cpp \
 	LinearTransform.cpp \
 	Log.cpp \
 	NativeHandle.cpp \
@@ -43,27 +40,20 @@ commonSources:= \
 
 host_commonCflags := -DLIBUTILS_NATIVE=1 $(TOOL_CFLAGS) -Werror
 
-ifeq ($(HOST_OS),windows)
-ifeq ($(strip $(USE_CYGWIN),),)
-# Under MinGW, ctype.h doesn't need multi-byte support
-host_commonCflags += -DMB_CUR_MAX=1
-endif
-endif
-
 # For the host
 # =====================================================
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES:= $(commonSources)
-ifeq ($(HOST_OS), linux)
-LOCAL_SRC_FILES += Looper.cpp
-endif
-ifeq ($(HOST_OS),darwin)
-LOCAL_CFLAGS += -Wno-unused-parameter
-endif
+LOCAL_SRC_FILES_linux := Looper.cpp
+LOCAL_CFLAGS_darwin := -Wno-unused-parameter
 LOCAL_MODULE:= libutils
 LOCAL_STATIC_LIBRARIES := liblog
 LOCAL_CFLAGS += $(host_commonCflags)
+# Under MinGW, ctype.h doesn't need multi-byte support
+LOCAL_CFLAGS_windows := -DMB_CUR_MAX=1
 LOCAL_MULTILIB := both
+LOCAL_MODULE_HOST_OS := darwin linux windows
+LOCAL_C_INCLUDES += external/safe-iop/include
 include $(BUILD_HOST_STATIC_LIBRARY)
 
 
@@ -75,6 +65,7 @@ include $(CLEAR_VARS)
 # we have the common sources, plus some device-specific stuff
 LOCAL_SRC_FILES:= \
 	$(commonSources) \
+	BlobCache.cpp \
 	Looper.cpp \
 	Trace.cpp
 
@@ -84,7 +75,8 @@ endif
 LOCAL_CFLAGS += -Werror
 
 LOCAL_STATIC_LIBRARIES := \
-	libcutils
+	libcutils \
+	libc
 
 LOCAL_SHARED_LIBRARIES := \
         libbacktrace \
@@ -92,6 +84,9 @@ LOCAL_SHARED_LIBRARIES := \
         libdl
 
 LOCAL_MODULE := libutils
+LOCAL_CLANG := true
+LOCAL_SANITIZE := integer
+LOCAL_C_INCLUDES += external/safe-iop/include
 include $(BUILD_STATIC_LIBRARY)
 
 # For the device, shared
@@ -105,9 +100,28 @@ LOCAL_SHARED_LIBRARIES := \
         libdl \
         liblog
 LOCAL_CFLAGS := -Werror
+LOCAL_C_INCLUDES += external/safe-iop/include
 
+LOCAL_CLANG := true
+LOCAL_SANITIZE := integer
 include $(BUILD_SHARED_LIBRARY)
 
+# Include subdirectory makefiles
+# ============================================================
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := SharedBufferTest
+LOCAL_STATIC_LIBRARIES := libutils libcutils
+LOCAL_SHARED_LIBRARIES := liblog
+LOCAL_SRC_FILES := SharedBufferTest.cpp
+include $(BUILD_NATIVE_TEST)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := SharedBufferTest
+LOCAL_STATIC_LIBRARIES := libutils libcutils
+LOCAL_SHARED_LIBRARIES := liblog
+LOCAL_SRC_FILES := SharedBufferTest.cpp
+include $(BUILD_HOST_NATIVE_TEST)
 
 # Build the tests in the tests/ subdirectory.
 include $(call first-makefiles-under,$(LOCAL_PATH))

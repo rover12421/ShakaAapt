@@ -1,0 +1,6 @@
+The binaries in this prebuilt directory can be rebuilt using
+the source in external/protobuf2.5
+
+cd external/protobuf2.5
+./configure --prefix=path/to/prebuilts/misc/linux-x86_64/protobuf2.5
+make && make install

@@ -287,6 +287,7 @@ inline static const char *asString(OMX_EVENTTYPE i, const char *def = "??") {
 //      case OMX_EventComponentResumed:          return "ComponentResumed";
 //      case OMX_EventDynamicResourcesAvailable: return "DynamicResourcesAvailable";
 //      case OMX_EventPortFormatDetected:        return "PortFormatDetected";
+        case OMX_EventOutputRendered:            return "OutputRendered";
         default:                                 return def;
     }
 }
@@ -521,6 +522,9 @@ inline static const char *asString(OMX_INDEXEXTTYPE i, const char *def = "??") {
         case OMX_IndexParamVideoHevc:                   return "ParamVideoHevc";
 //      case OMX_IndexParamSliceSegments:               return "ParamSliceSegments";
         case OMX_IndexConfigAutoFramerateConversion:    return "ConfigAutoFramerateConversion";
+        case OMX_IndexConfigPriority:                   return "ConfigPriority";
+        case OMX_IndexConfigOperatingRate:              return "ConfigOperatingRate";
+        case OMX_IndexParamConsumerUsageBits:           return "ParamConsumerUsageBits";
         default:                                        return asString((OMX_INDEXTYPE)i, def);
     }
 }

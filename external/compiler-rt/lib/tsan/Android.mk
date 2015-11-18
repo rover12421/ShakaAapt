@@ -46,47 +46,6 @@ tsan_rtl_files := \
   rtl/tsan_sync.cc \
   rtl/tsan_platform_linux.cc \
   rtl/tsan_rtl_amd64.S \
-  ../interception/interception_linux.cc \
-  ../sanitizer_common/sanitizer_allocator.cc \
-  ../sanitizer_common/sanitizer_common.cc \
-  ../sanitizer_common/sanitizer_common_libcdep.cc \
-  ../sanitizer_common/sanitizer_coverage_libcdep.cc \
-  ../sanitizer_common/sanitizer_coverage_mapping_libcdep.cc \
-  ../sanitizer_common/sanitizer_deadlock_detector1.cc \
-  ../sanitizer_common/sanitizer_deadlock_detector2.cc \
-  ../sanitizer_common/sanitizer_flags.cc \
-  ../sanitizer_common/sanitizer_flag_parser.cc \
-  ../sanitizer_common/sanitizer_libc.cc \
-  ../sanitizer_common/sanitizer_libignore.cc \
-  ../sanitizer_common/sanitizer_linux.cc \
-  ../sanitizer_common/sanitizer_linux_libcdep.cc \
-  ../sanitizer_common/sanitizer_mac.cc \
-  ../sanitizer_common/sanitizer_persistent_allocator.cc \
-  ../sanitizer_common/sanitizer_platform_limits_linux.cc \
-  ../sanitizer_common/sanitizer_platform_limits_posix.cc \
-  ../sanitizer_common/sanitizer_posix.cc \
-  ../sanitizer_common/sanitizer_posix_libcdep.cc \
-  ../sanitizer_common/sanitizer_printf.cc \
-  ../sanitizer_common/sanitizer_procmaps_common.cc \
-  ../sanitizer_common/sanitizer_procmaps_freebsd.cc \
-  ../sanitizer_common/sanitizer_procmaps_linux.cc \
-  ../sanitizer_common/sanitizer_procmaps_mac.cc \
-  ../sanitizer_common/sanitizer_stackdepot.cc \
-  ../sanitizer_common/sanitizer_stacktrace.cc \
-  ../sanitizer_common/sanitizer_stacktrace_libcdep.cc \
-  ../sanitizer_common/sanitizer_stacktrace_printer.cc \
-  ../sanitizer_common/sanitizer_stoptheworld_linux_libcdep.cc \
-  ../sanitizer_common/sanitizer_suppressions.cc \
-  ../sanitizer_common/sanitizer_symbolizer.cc \
-  ../sanitizer_common/sanitizer_symbolizer_libbacktrace.cc \
-  ../sanitizer_common/sanitizer_symbolizer_libcdep.cc \
-  ../sanitizer_common/sanitizer_symbolizer_posix_libcdep.cc \
-  ../sanitizer_common/sanitizer_symbolizer_process_libcdep.cc \
-  ../sanitizer_common/sanitizer_symbolizer_win.cc \
-  ../sanitizer_common/sanitizer_thread_registry.cc \
-  ../sanitizer_common/sanitizer_tls_get_addr.cc \
-  ../sanitizer_common/sanitizer_unwind_posix_libcdep.cc \
-  ../sanitizer_common/sanitizer_win.cc \
 
 tsan_rtl_cppflags := -std=c++11 -Wall -Werror -Wno-unused-parameter -Wno-non-virtual-dtor \
                      -fno-rtti -fno-builtin
@@ -103,9 +62,20 @@ LOCAL_SRC_FILES := $(tsan_rtl_files)
 LOCAL_CXX_STL := none
 LOCAL_SANITIZE := never
 LOCAL_MULTILIB := 64
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
+LOCAL_WHOLE_STATIC_LIBRARIES := libinterception libsan libubsan
 include $(BUILD_HOST_STATIC_LIBRARY)
 
+include $(CLEAR_VARS)
+LOCAL_MODULE := libtsan_cxx
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_C_INCLUDES = $(tsan_rtl_c_includes)
+LOCAL_CPPFLAGS := $(tsan_rtl_cppflags)
+LOCAL_SRC_FILES := rtl/tsan_new_delete.cc
+LOCAL_CXX_STL := none
+LOCAL_SANITIZE := never
+LOCAL_MULTILIB := 64
+LOCAL_WHOLE_STATIC_LIBRARIES := libubsan_cxx
+include $(BUILD_HOST_STATIC_LIBRARY)
 
 tsan_unit_test_src_files := \
   tests/unit/tsan_clock_test.cc \
@@ -137,7 +107,6 @@ LOCAL_SANITIZE := never
 LOCAL_MULTILIB := 64
 LOCAL_STATIC_LIBRARIES := libtsan libubsan
 LOCAL_LDLIBS := -lrt -ldl
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_NATIVE_TEST)
 
 
@@ -165,7 +134,6 @@ LOCAL_SANITIZE := never
 LOCAL_MULTILIB := 64
 LOCAL_STATIC_LIBRARIES := libtsan libubsan
 LOCAL_LDLIBS := -lrt -ldl
-LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 include $(BUILD_HOST_NATIVE_TEST)
 
 endif # SANITIZE_HOST

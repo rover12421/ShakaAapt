@@ -236,6 +236,13 @@ png_crc_finish(png_structrp png_ptr, png_uint_32 skip)
 }
 
 #ifdef PNG_INDEX_SUPPORTED
+/* If tile index is used to skip over data and decode a partial image
+ * the crc value may be incorrect.
+ * The crc will only be calculated for the partial data read,
+ * not the entire data, which will result in an incorrect crc value.
+ * This function treats a png_crc_error as a warning, as opposed to the
+ * original function png_crc_finish, which will treat it as an error.
+ */
 int /* PRIVATE */
 png_opt_crc_finish(png_structrp png_ptr, png_uint_32 skip)
 {
@@ -4143,6 +4150,14 @@ png_read_finish_IDAT(png_structrp png_ptr)
        * crc_finish here.  If idat_size is non-zero we also need to read the
        * spurious bytes at the end of the chunk now.
        */
+#ifdef PNG_INDEX_SUPPORTED
+      if (png_ptr->index)
+      {
+        (void)png_opt_crc_finish(png_ptr, png_ptr->idat_size);
+        png_ptr->index->stream_idat_position = png_ptr->total_data_read;
+      }
+      else
+#endif
       (void)png_crc_finish(png_ptr, png_ptr->idat_size);
    }
 }

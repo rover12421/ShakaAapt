@@ -503,12 +503,24 @@ typedef enum OMX_EVENTTYPE
     OMX_EventResourcesAcquired,   /**< component has been granted resources and is
                                        automatically starting the state change from
                                        OMX_StateWaitForResources to OMX_StateIdle. */
-   OMX_EventComponentResumed,     /**< Component resumed due to reacquisition of resources */
-   OMX_EventDynamicResourcesAvailable, /**< Component has acquired previously unavailable dynamic resources */
-   OMX_EventPortFormatDetected,      /**< Component has detected a supported format. */
-   OMX_EventKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
-   OMX_EventVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
-   OMX_EventMax = 0x7FFFFFFF
+    OMX_EventComponentResumed,     /**< Component resumed due to reacquisition of resources */
+    OMX_EventDynamicResourcesAvailable, /**< Component has acquired previously unavailable dynamic resources */
+    OMX_EventPortFormatDetected,      /**< Component has detected a supported format. */
+    OMX_EventKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
+    OMX_EventVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
+
+    /** Event when tunneled decoder has rendered an output
+     *  nData1 must contain the number of timestamps returned
+     *  pEventData must point to an array of the OMX_VIDEO_RENDEREVENTTYPE structs containing the
+     *  render-timestamps of each frame. Component may batch rendered timestamps using this event,
+     *  but must signal the event no more than 40ms after the first frame in the batch. The frames
+     *  must be ordered by system timestamp inside and across batches.
+     *
+     *  If component is doing frame-rate conversion, it must signal the render time of each
+     *  converted frame, and must interpolate media timestamps for in-between frames.
+     */
+    OMX_EventOutputRendered = 0x7F000001,
+    OMX_EventMax = 0x7FFFFFFF
 } OMX_EVENTTYPE;
 
 typedef struct OMX_CALLBACKTYPE

@@ -60,9 +60,6 @@ void usage(void)
         " %s p[ackage] [-d][-f][-m][-u][-v][-x][-z][-M AndroidManifest.xml] \\\n"
         "        [-0 extension [-0 extension ...]] [-g tolerance] [-j jarfile] \\\n"
         "        [--debug-mode] [--min-sdk-version VAL] [--target-sdk-version VAL] \\\n"
-        //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-        "        [--forced-package-id VAL] \\\n"
-        //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
         "        [--app-version VAL] [--app-version-name TEXT] [--custom-package VAL] \\\n"
         "        [--rename-manifest-package PACKAGE] \\\n"
         "        [--rename-instrumentation-target-package PACKAGE] \\\n"
@@ -145,10 +142,6 @@ void usage(void)
         "       higher, the default encoding for resources will be in UTF-8.\n"
         "   --target-sdk-version\n"
         "       inserts android:targetSdkVersion in to manifest.\n"
-        //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-        "   --forced-package-id\n"
-        "       forces value as package-id\n"
-        //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
         "   --max-res-version\n"
         "       ignores versioned resource directories above the given value.\n"
         "   --values\n"
@@ -219,7 +212,12 @@ void usage(void)
         "       specified folder.\n"
         "   --ignore-assets\n"
         "       Assets to be ignored. Default pattern is:\n"
-        "       %s\n",
+        "       %s\n"
+        "   --skip-symbols-without-default-localization\n"
+        "       Prevents symbols from being generated for strings that do not have a default\n"
+        "       localization\n"
+        "   --no-version-vectors\n"
+        "       Do not automatically generate versioned copies of vector XML resources.\n",
         gDefaultIgnoreAssets);
 }
 
@@ -503,17 +501,6 @@ int main(int argc, char* const argv[])
             case '-':
                 if (strcmp(cp, "-debug-mode") == 0) {
                     bundle.setDebugMode(true);
-                //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-                } else if (strcmp(cp, "-forced-package-id") == 0) {
-                    argc--;
-                    argv++;
-                    if (!argc) {
-                        fprintf(stderr, "ERROR: No argument supplied for '--forced-package-id' option\n");
-                        wantUsage = true;
-                        goto bail;
-                    }
-                    bundle.setForcedPackageId(atoi(argv[0]));
-                //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
                 } else if (strcmp(cp, "-min-sdk-version") == 0) {
                     argc--;
                     argv++;
@@ -676,6 +663,8 @@ int main(int argc, char* const argv[])
                     bundle.setProduct(argv[0]);
                 } else if (strcmp(cp, "-non-constant-id") == 0) {
                     bundle.setNonConstantId(true);
+                } else if (strcmp(cp, "-skip-symbols-without-default-localization") == 0) {
+                    bundle.setSkipSymbolsWithoutDefaultLocalization(true);
                 } else if (strcmp(cp, "-shared-lib") == 0) {
                     bundle.setNonConstantId(true);
                     bundle.setBuildSharedLibrary(true);
@@ -692,6 +681,8 @@ int main(int argc, char* const argv[])
                     gUserIgnoreAssets = argv[0];
                 } else if (strcmp(cp, "-pseudo-localize") == 0) {
                     bundle.setPseudolocalize(PSEUDO_ACCENTED | PSEUDO_BIDI);
+                } else if (strcmp(cp, "-no-version-vectors") == 0) {
+                    bundle.setNoVersionVectors(true);
                 } else {
                     fprintf(stderr, "ERROR: Unknown option '-%s'\n", cp);
                     wantUsage = true;

@@ -169,12 +169,6 @@ libcompiler_rt_common_SRC_FILES := \
   lib/builtins/umodsi3.c \
   lib/builtins/umodti3.c
 
-# Only build enable_execute_stack.c on non-Windows hosts.
-ifneq ($(HOST_OS),windows)
-libcompiler_rt_common_SRC_FILES += \
-  lib/builtins/enable_execute_stack.c
-endif
-
 # ARM-specific runtimes
 libcompiler_rt_arm_SRC_FILES := \
   lib/builtins/arm/aeabi_dcmp.S \
@@ -360,6 +354,7 @@ LOCAL_SRC_FILES := $(libcompiler_rt_extras_SRC_FILES)
 LOCAL_SANITIZE := never
 LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
+LOCAL_MODULE_HOST_OS := darwin linux windows
 
 include $(BUILD_HOST_STATIC_LIBRARY)
 
@@ -377,6 +372,7 @@ LOCAL_CFLAGS_arm += -D__ARM_EABI__
 LOCAL_CFLAGS_mips64 += -DCRT_HAS_128BIT -DCRT_LDBL_128BIT
 LOCAL_ASFLAGS := -integrated-as
 LOCAL_CLANG := true
+LOCAL_SRC_FILES := lib/builtins/enable_execute_stack.c
 LOCAL_SRC_FILES_arm := $(call get-libcompiler-rt-source-files,arm)
 LOCAL_SRC_FILES_arm64 := $(call get-libcompiler-rt-source-files,arm64)
 LOCAL_SRC_FILES_mips := $(call get-libcompiler-rt-source-files,mips)
@@ -401,6 +397,9 @@ LOCAL_MODULE := libcompiler_rt
 LOCAL_ASFLAGS := -integrated-as
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(call get-libcompiler-rt-source-files,x86_64)
+# Only build enable_execute_stack.c on non-Windows hosts.
+LOCAL_SRC_FILES_darwin := lib/builtins/enable_execute_stack.c
+LOCAL_SRC_FILES_linux := lib/builtins/enable_execute_stack.c
 LOCAL_SANITIZE := never
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 LOCAL_MULTILIB := both
@@ -454,6 +453,12 @@ LOCAL_STATIC_LIBRARIES_mips := libunwindbacktrace
 LOCAL_STATIC_LIBRARIES_mips64 := libunwindbacktrace
 LOCAL_STATIC_LIBRARIES_x86 := libunwindbacktrace
 LOCAL_STATIC_LIBRARIES_x86_64 := libunwindbacktrace
+LOCAL_LDFLAGS_arm := -Wl,--exclude-libs,libunwind_llvm.a
+LOCAL_LDFLAGS_arm64 := -Wl,--exclude-libs,libunwindbacktrace.a
+LOCAL_LDFLAGS_mips := -Wl,--exclude-libs,libunwindbacktrace.a
+LOCAL_LDFLAGS_mips64 := -Wl,--exclude-libs,libunwindbacktrace.a
+LOCAL_LDFLAGS_x86 := -Wl,--exclude-libs,libunwindbacktrace.a
+LOCAL_LDFLAGS_x86_64 := -Wl,--exclude-libs,libunwindbacktrace.a
 LOCAL_MODULE_TARGET_ARCH := arm arm64 mips mips64 x86 x86_64
 LOCAL_SANITIZE := never
 LOCAL_CXX_STL := none
@@ -470,14 +475,13 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libcompiler_rt
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 LOCAL_WHOLE_STATIC_LIBRARIES := libcompiler_rt
-ifneq ($(HOST_OS),darwin)
-LOCAL_STATIC_LIBRARIES := libunwindbacktrace
-endif
+LOCAL_STATIC_LIBRARIES_linux := libunwindbacktrace
+LOCAL_STATIC_LIBRARIES_windows := libunwindbacktrace
 LOCAL_CPPFLAGS := -nostdinc++
-ifneq ($(HOST_OS),windows)
-LOCAL_LDFLAGS := -nodefaultlibs
-LOCAL_LDLIBS := -lpthread -lc -lm
-endif
+LOCAL_LDFLAGS_darwin := -nodefaultlibs
+LOCAL_LDFLAGS_linux := -nodefaultlibs
+LOCAL_LDLIBS_darwin := -lpthread -lc -lm
+LOCAL_LDLIBS_linux := -lpthread -lc -lm
 LOCAL_MULTILIB := both
 LOCAL_SANITIZE := never
 LOCAL_CXX_STL := none

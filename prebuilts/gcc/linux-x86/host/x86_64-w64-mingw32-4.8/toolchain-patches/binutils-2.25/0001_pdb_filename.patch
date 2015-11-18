@@ -1,0 +1,185 @@
+diff -Nur a/bfd/libpei.h b/bfd/libpei.h
+--- a/bfd/libpei.h	2015-10-21 11:59:30.181317175 -0700
++++ b/bfd/libpei.h	2015-10-22 11:42:59.840341121 -0700
+@@ -238,6 +238,7 @@
+ #define _bfd_XXi_swap_debugdir_in			_bfd_pex64i_swap_debugdir_in
+ #define _bfd_XXi_swap_debugdir_out			_bfd_pex64i_swap_debugdir_out
+ #define _bfd_XXi_write_codeview_record			_bfd_pex64i_write_codeview_record
++#define _bfd_XXi_get_codeview_pdb_name			_bfd_pex64i_get_codeview_pdb_name
+ 
+ #elif defined COFF_WITH_pep
+ 
+@@ -272,6 +273,7 @@
+ #define _bfd_XXi_swap_debugdir_in			_bfd_pepi_swap_debugdir_in
+ #define _bfd_XXi_swap_debugdir_out			_bfd_pepi_swap_debugdir_out
+ #define _bfd_XXi_write_codeview_record			_bfd_pepi_write_codeview_record
++#define _bfd_XXi_get_codeview_pdb_name			_bfd_pepi_get_codeview_pdb_name
+ 
+ #else /* !COFF_WITH_pep */
+ 
+@@ -306,6 +308,7 @@
+ #define _bfd_XXi_swap_debugdir_in			_bfd_pei_swap_debugdir_in
+ #define _bfd_XXi_swap_debugdir_out			_bfd_pei_swap_debugdir_out
+ #define _bfd_XXi_write_codeview_record			_bfd_pei_write_codeview_record
++#define _bfd_XXi_get_codeview_pdb_name			_bfd_pei_get_codeview_pdb_name
+ 
+ #endif /* !COFF_WITH_pep */
+ 
+@@ -351,6 +354,7 @@
+ void        _bfd_XXi_swap_debugdir_in (bfd *, void *, void *);
+ unsigned    _bfd_XXi_swap_debugdir_out (bfd *, void *, void *);
+ unsigned    _bfd_XXi_write_codeview_record (bfd *, file_ptr, CODEVIEW_INFO *);
++const char* _bfd_XXi_get_codeview_pdb_name (bfd *);
+ 
+ /* The following are needed only for ONE of pe or pei, but don't
+    otherwise vary; peicode.h fixes up ifdefs but we provide the
+diff -Nur a/bfd/peXXigen.c b/bfd/peXXigen.c
+--- a/bfd/peXXigen.c	2015-10-21 20:04:27.793914713 -0700
++++ b/bfd/peXXigen.c	2015-10-22 12:20:31.644941168 -0700
+@@ -1135,19 +1135,32 @@
+   return sizeof (struct external_IMAGE_DEBUG_DIRECTORY);
+ }
+ 
++
++const char *
++_bfd_XXi_get_codeview_pdb_name (bfd * abfd)
++{
++  char * filename_ptr = bfd_get_filename(abfd);
++  char * last_dir_separator = strrchr(filename_ptr, '/');
++  if (last_dir_separator != NULL) {
++      filename_ptr = last_dir_separator+1;
++  }
++  return filename_ptr;
++}
++
+ static CODEVIEW_INFO *
+-_bfd_XXi_slurp_codeview_record (bfd * abfd, file_ptr where, unsigned long length, CODEVIEW_INFO *cvinfo)
++_bfd_XXi_slurp_codeview_record (bfd * abfd, file_ptr where, unsigned long length, CODEVIEW_INFO * cvinfo)
+ {
+-  char buffer[256+1];
+ 
+-  if (bfd_seek (abfd, where, SEEK_SET) != 0)
++  char buffer [length];
++
++  if (!cvinfo)
+     return NULL;
+ 
+-  if (bfd_bread (buffer, 256, abfd) < 4)
++  if (bfd_seek (abfd, where, SEEK_SET) != 0)
+     return NULL;
+ 
+-  /* Ensure null termination of filename.  */
+-  buffer[256] = '\0';
++  if (bfd_bread (buffer, length, abfd) < 4)
++    return NULL;
+ 
+   cvinfo->CVSignature = H_GET_32(abfd, buffer);
+   cvinfo->Age = 0;
+@@ -1168,7 +1181,7 @@
+       memcpy (&(cvinfo->Signature[8]), &(cvinfo70->Signature[8]), 8);
+ 
+       cvinfo->SignatureLength = CV_INFO_SIGNATURE_LENGTH;
+-      // cvinfo->PdbFileName = cvinfo70->PdbFileName;
++      strcpy(cvinfo->PdbFileName, cvinfo70->PdbFileName);
+ 
+       return cvinfo;
+     }
+@@ -1190,7 +1203,9 @@
+ unsigned int
+ _bfd_XXi_write_codeview_record (bfd * abfd, file_ptr where, CODEVIEW_INFO *cvinfo)
+ {
+-  unsigned int size = sizeof (CV_INFO_PDB70) + 1;
++  const char * filename_ptr = _bfd_XXi_get_codeview_pdb_name(abfd);
++  unsigned int filename_size = strlen(filename_ptr);
++  unsigned int size = sizeof (CV_INFO_PDB70) + filename_size + 1;
+   CV_INFO_PDB70 *cvinfo70;
+   char buffer[size];
+ 
+@@ -1208,7 +1223,7 @@
+   memcpy (&(cvinfo70->Signature[8]), &(cvinfo->Signature[8]), 8);
+ 
+   H_PUT_32 (abfd, cvinfo->Age, cvinfo70->Age);
+-  cvinfo70->PdbFileName[0] = '\0';
++  strcpy(cvinfo70->PdbFileName, filename_ptr);
+ 
+   if (bfd_bwrite (buffer, size, abfd) != size)
+     return 0;
+@@ -2652,8 +2667,8 @@
+       if (idd.Type == PE_IMAGE_DEBUG_TYPE_CODEVIEW)
+         {
+           char signature[CV_INFO_SIGNATURE_LENGTH * 2 + 1];
+-          char buffer[256 + 1];
+-          CODEVIEW_INFO *cvinfo = (CODEVIEW_INFO *) buffer;
++          char buffer [idd.SizeOfData];
++          CODEVIEW_INFO * cvinfo = (CODEVIEW_INFO *) buffer;
+ 
+           /* The debug entry doesn't have to have to be in a section,
+ 	     in which case AddressOfRawData is 0, so always use PointerToRawData.  */
+@@ -2664,9 +2679,10 @@
+           for (i = 0; i < cvinfo->SignatureLength; i++)
+             sprintf (&signature[i*2], "%02x", cvinfo->Signature[i] & 0xff);
+ 
+-          fprintf (file, "(format %c%c%c%c signature %s age %ld)\n",
+-		   buffer[0], buffer[1], buffer[2], buffer[3],
+-		   signature, cvinfo->Age);
++          fprintf (file, "(format %c%c%c%c signature %s age %ld pdb %s)\n",
++	         buffer[0], buffer[1], buffer[2], buffer[3],
++	         signature, cvinfo->Age, cvinfo->PdbFileName);
++          
+         }
+     }
+ 
+diff -Nur a/include/coff/internal.h b/include/coff/internal.h
+--- a/include/coff/internal.h	2015-10-21 11:59:30.213316958 -0700
++++ b/include/coff/internal.h	2015-10-22 11:42:59.844341094 -0700
+@@ -167,7 +167,7 @@
+   char          Signature[CV_INFO_SIGNATURE_LENGTH];
+   unsigned int  SignatureLength;
+   unsigned long Age;
+-  // char PdbFileName[];
++  char PdbFileName[];
+ } CODEVIEW_INFO;
+ 
+ /* Default image base for NT.  */
+diff -Nur a/ld/emultempl/pe.em b/ld/emultempl/pe.em
+--- a/ld/emultempl/pe.em	2015-10-21 11:59:29.957318693 -0700
++++ b/ld/emultempl/pe.em	2015-10-22 12:50:55.876527037 -0700
+@@ -1324,6 +1324,9 @@
+       return TRUE;
+     }
+ 
++  const char * pdb_name = _bfd_XXi_get_codeview_pdb_name (abfd);
++  unsigned int pdb_name_length = strlen(pdb_name);
++
+   if (t->build_id.sec->contents == NULL)
+     t->build_id.sec->contents = (unsigned char *) xmalloc (t->build_id.sec->size);
+   contents = t->build_id.sec->contents;
+@@ -1342,7 +1348,7 @@
+   idd.MajorVersion = 0;
+   idd.MinorVersion = 0;
+   idd.Type = PE_IMAGE_DEBUG_TYPE_CODEVIEW;
+-  idd.SizeOfData = sizeof (CV_INFO_PDB70) + 1;
++  idd.SizeOfData = sizeof (CV_INFO_PDB70) + pdb_name_length + 1;
+   idd.AddressOfRawData = asec->vma - ib + link_order->offset
+     + sizeof (struct external_IMAGE_DEBUG_DIRECTORY);
+   idd.PointerToRawData = asec->filepos + link_order->offset
+@@ -1405,13 +1411,14 @@
+       t->build_id.after_write_object_contents = &write_build_id;
+       t->build_id.style = emit_build_id;
+       t->build_id.sec = s;
+-
+-      /* Section is a fixed size:
++        
++      /* Section is a variable size:
+ 	 One IMAGE_DEBUG_DIRECTORY entry, of type IMAGE_DEBUG_TYPE_CODEVIEW,
+ 	 pointing at a CV_INFO_PDB70 record containing the build-id, with a
+-	 null byte for PdbFileName.  */
++     null terminated string for PdbFileName.  */
++
+       s->size = sizeof (struct external_IMAGE_DEBUG_DIRECTORY)
+-	+ sizeof (CV_INFO_PDB70) + 1;
++	+ sizeof (CV_INFO_PDB70) + strlen(_bfd_XXi_get_codeview_pdb_name(link_info.output_bfd)) + 1;
+ 
+       return TRUE;
+     }
+

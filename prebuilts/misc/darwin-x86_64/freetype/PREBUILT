@@ -1,0 +1,3 @@
+Taken from MacPorts installation.
+
+Install freetype-2.6 using MacPorts. Grab headers and libraries from /opt/local.

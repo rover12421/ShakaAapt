@@ -345,7 +345,8 @@ int AaptLocaleValue::initFromDirName(const Vector<String8>& parts, const int sta
 
         return ++currentIndex;
     } else {
-        if ((part.length() == 2 || part.length() == 3) && isAlpha(part)) {
+        if ((part.length() == 2 || part.length() == 3)
+               && isAlpha(part) && strcmp("car", part.string())) {
             setLanguage(part);
             if (++currentIndex == size) {
                 return size;
@@ -364,33 +365,6 @@ int AaptLocaleValue::initFromDirName(const Vector<String8>& parts, const int sta
     }
 
     return currentIndex;
-}
-
-
-String8 AaptLocaleValue::toDirName() const {
-    String8 dirName("");
-    if (language[0]) {
-        dirName += language;
-    } else {
-        return dirName;
-    }
-
-    if (script[0]) {
-        dirName += "-s";
-        dirName += script;
-    }
-
-    if (region[0]) {
-        dirName += "-r";
-        dirName += region;
-    }
-
-    if (variant[0]) {
-        dirName += "-v";
-        dirName += variant;
-    }
-
-    return dirName;
 }
 
 void AaptLocaleValue::initFromResTable(const ResTable_config& config) {
@@ -765,10 +739,6 @@ ssize_t AaptDir::slurpFullTree(Bundle* bundle, const String8& srcDir,
 
 status_t AaptDir::validate() const
 {
-    //[Rover12421]>
-    return NO_ERROR;
-    //[Rover12421]<
-
     const size_t NF = mFiles.size();
     const size_t ND = mDirs.size();
     size_t i;

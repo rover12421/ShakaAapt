@@ -61,10 +61,6 @@ Software development
 * Binutils: (binutils).         The GNU binary utilities.
 * Gas: (as).                    The GNU assembler.
 * Ld: (ld).                     The GNU linker.
-* g++: (gcc).                   The GNU C++ compiler.
-* gcc: (gcc).                   The GNU Compiler Collection.
-* gccint: (gccint).             Internals of the GNU Compiler Collection.
-* gcov: (gcc) Gcov.             `gcov'--a test coverage program.
 * gprof: (gprof).               Profiling your program's execution
 
 Software libraries

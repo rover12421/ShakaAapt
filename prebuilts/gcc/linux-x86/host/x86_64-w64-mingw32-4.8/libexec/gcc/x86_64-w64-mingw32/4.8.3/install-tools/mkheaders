@@ -53,7 +53,7 @@ if [ x$1 != x ] ; then
   prefix=$1
   shift
 else
-  prefix=/tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32
+  prefix=/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32
 fi
 
 # Allow for alternate isysroot in which to find headers

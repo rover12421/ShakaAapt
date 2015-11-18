@@ -1097,8 +1097,12 @@ ul ul, ul ol, ol ul, ol ol {
 li {
   margin:0 0 5px;
 }
+dt {
+  font-weight:bold;
+}
 dd {
   margin:0 0 10px 30px;
+  padding: 5px;
 }
 dd p,
 dd pre,
@@ -1507,7 +1511,7 @@ Header, Login, Nav-X, Search
 .devices a.selected {
     color: #F80;
 }
-.accessories a.selected {
+.security a.selected {
     color: #9C0;
 }
 .compatibility a.selected {
@@ -4559,4 +4563,8 @@ a.download-sdk {
 }
 .fullpage #footer {
   margin-top: -40px;
+}
+
+.annotation-message {
+  display: block;
 }

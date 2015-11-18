@@ -23,6 +23,7 @@
 LOCAL_IS_HOST_MODULE := $(call true-or-empty,$(LOCAL_IS_HOST_MODULE))
 ifeq ($(LOCAL_IS_HOST_MODULE),true)
 my_prefix := HOST_
+LOCAL_HOST_PREFIX :=
 else
 my_prefix := TARGET_
 endif
@@ -124,7 +125,7 @@ ifneq ($(strip $(LOCAL_DROIDDOC_USE_STANDARD_DOCLET)),true)
 ##
 
 droiddoc_templates := \
-    $(shell find $(LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR) -type f)
+    $(sort $(shell find $(LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR) -type f))
 
 droiddoc := \
 	$(HOST_JDK_TOOLS_JAR) \
@@ -141,7 +142,7 @@ $(full_target): PRIVATE_OUT_CUSTOM_ASSET_DIR := $(out_dir)/$(LOCAL_DROIDDOC_CUST
 html_dir_files :=
 ifneq ($(strip $(LOCAL_DROIDDOC_HTML_DIR)),)
 $(full_target): PRIVATE_DROIDDOC_HTML_DIR := -htmldir $(LOCAL_PATH)/$(LOCAL_DROIDDOC_HTML_DIR)
-html_dir_files := $(shell find $(LOCAL_PATH)/$(LOCAL_DROIDDOC_HTML_DIR) -type f)
+html_dir_files := $(sort $(shell find $(LOCAL_PATH)/$(LOCAL_DROIDDOC_HTML_DIR) -type f))
 else
 $(full_target): PRIVATE_DROIDDOC_HTML_DIR :=
 endif
@@ -160,7 +161,7 @@ $(full_target): \
         $(droiddoc) \
         $(html_dir_files) \
         $(full_java_lib_deps) \
-        $(LOCAL_MODULE_MAKEFILE) \
+        $(LOCAL_MODULE_MAKEFILE_DEP) \
         $(LOCAL_ADDITIONAL_DEPENDENCIES)
 	@echo Docs droiddoc: $(PRIVATE_OUT_DIR)
 	$(hide) mkdir -p $(dir $@)
@@ -240,7 +241,7 @@ $(out_zip): $(full_target)
 	@echo Package docs: $@
 	@rm -f $@
 	@mkdir -p $(dir $@)
-	$(hide) ( F=$$(pwd)/$@ ; cd $(PRIVATE_DOCS_DIR) && zip -rq $$F * )
+	$(hide) ( F=$$(pwd)/$@ ; cd $(PRIVATE_DOCS_DIR) && zip -rqX $$F * )
 
 $(LOCAL_MODULE)-docs.zip : $(out_zip)
 

@@ -30,6 +30,9 @@
 
 #include <cutils/memory.h>
 
+#ifdef __clang__
+__attribute__((no_sanitize("integer")))
+#endif
 void android_memset16(uint16_t* dst, uint16_t value, size_t size)
 {
    /* optimized version of
@@ -46,7 +49,7 @@ void android_memset16(uint16_t* dst, uint16_t value, size_t size)
    }
    /* dst is now 32-bit-aligned */
    /* fill body with 32-bit pairs */
-   uint32_t value32 = (value << 16) | value;
+   uint32_t value32 = (((uint32_t)value) << 16) | ((uint32_t)value);
    android_memset32((uint32_t*) dst, value32, size<<1);
    if (size & 1) {
       dst[size-1] = value;  /* fill unpaired last elem */
@@ -54,6 +57,9 @@ void android_memset16(uint16_t* dst, uint16_t value, size_t size)
 }
 
 
+#ifdef __clang__
+__attribute__((no_sanitize("integer")))
+#endif
 void android_memset32(uint32_t* dst, uint32_t value, size_t size)
 {
    /* optimized version of
@@ -70,7 +76,7 @@ void android_memset32(uint32_t* dst, uint32_t value, size_t size)
    }
    /* dst is now 64-bit aligned */
    /* fill body with 64-bit pairs */
-   uint64_t value64 = (((uint64_t)value)<<32) | value;
+   uint64_t value64 = (((uint64_t)value) << 32) | ((uint64_t)value);
    uint64_t* dst64 = (uint64_t*)dst;
 
    while (size >= 12) {
@@ -86,7 +92,8 @@ void android_memset32(uint32_t* dst, uint32_t value, size_t size)
 
    /* fill remainder with original 32-bit single-elem loop */
    dst = (uint32_t*) dst64;
-   while (size--) {
+   while (size != 0) {
+       size--;
       *dst++ = value;
    }
 

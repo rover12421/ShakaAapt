@@ -1132,6 +1132,24 @@ struct ResTable_config
     // chars. Interpreted in conjunction with the locale field.
     char localeVariant[8];
 
+    enum {
+        // screenLayout2 bits for round/notround.
+        MASK_SCREENROUND = 0x03,
+        SCREENROUND_ANY = ACONFIGURATION_SCREENROUND_ANY,
+        SCREENROUND_NO = ACONFIGURATION_SCREENROUND_NO,
+        SCREENROUND_YES = ACONFIGURATION_SCREENROUND_YES,
+    };
+
+    // An extension of screenConfig.
+    union {
+        struct {
+            uint8_t screenLayout2;      // Contains round/notround qualifier.
+            uint8_t screenConfigPad1;   // Reserved padding.
+            uint16_t screenConfigPad2;  // Reserved padding.
+        };
+        uint32_t screenConfig2;
+    };
+
     void copyFromDeviceNoSwap(const ResTable_config& o);
     
     void copyFromDtoH(const ResTable_config& o);
@@ -1160,6 +1178,7 @@ struct ResTable_config
         CONFIG_SCREEN_LAYOUT = ACONFIGURATION_SCREEN_LAYOUT,
         CONFIG_UI_MODE = ACONFIGURATION_UI_MODE,
         CONFIG_LAYOUTDIR = ACONFIGURATION_LAYOUTDIR,
+        CONFIG_SCREEN_ROUND = ACONFIGURATION_SCREEN_ROUND,
     };
     
     // Compare two configuration, returning CONFIG_* flags set for each value
@@ -1195,6 +1214,12 @@ struct ResTable_config
     //
     // Example: en-US, en-Latn-US, en-POSIX.
     void getBcp47Locale(char* out) const;
+
+    // Append to str the resource-qualifer string representation of the
+    // locale component of this Config. If the locale is only country
+    // and language, it will look like en-rUS. If it has scripts and
+    // variants, it will be a modified bcp47 tag: b+en+Latn+US.
+    void appendDirLocale(String8& str) const;
 
     // Sets the values of language, region, script and variant to the
     // well formed BCP-47 locale contained in |in|. The input locale is
@@ -1328,7 +1353,11 @@ struct ResTable_entry
         FLAG_COMPLEX = 0x0001,
         // If set, this resource has been declared public, so libraries
         // are allowed to reference it.
-        FLAG_PUBLIC = 0x0002
+        FLAG_PUBLIC = 0x0002,
+        // If set, this is a weak resource and may be overriden by strong
+        // resources of the same name/type. This is only useful during
+        // linking with other resource tables.
+        FLAG_WEAK = 0x0004
     };
     uint16_t flags;
     
@@ -1621,6 +1650,7 @@ public:
 
         status_t applyStyle(uint32_t resID, bool force=false);
         status_t setTo(const Theme& other);
+        status_t clear();
 
         /**
          * Retrieve a value in the theme.  If the theme defines this
@@ -1652,6 +1682,12 @@ public:
                 uint32_t* inoutTypeSpecFlags = NULL,
                 ResTable_config* inoutConfig = NULL) const;
 
+        /**
+         * Returns a bit mask of configuration changes that will impact this
+         * theme (and thus require completely reloading it).
+         */
+        uint32_t getChangingConfigurations() const;
+
         void dumpToLog() const;
         
     private:
@@ -1678,6 +1714,7 @@ public:
 
         const ResTable& mTable;
         package_info*   mPackages[Res_MAXPACKAGE];
+        uint32_t        mTypeSpecFlags;
     };
 
     void setParameters(const ResTable_config* params);

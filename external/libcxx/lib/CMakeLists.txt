@@ -1,3 +1,5 @@
+set(LIBCXX_LIB_CMAKEFILES_DIR "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"  PARENT_SCOPE)
+
 # Get sources
 file(GLOB LIBCXX_SOURCES ../src/*.cpp)
 if(WIN32)
@@ -23,58 +25,70 @@ if (MSVC_IDE OR XCODE)
 endif()
 
 if (LIBCXX_ENABLE_SHARED)
-  add_library(cxx SHARED
-    ${LIBCXX_SOURCES}
-    ${LIBCXX_HEADERS}
-    )
+  add_library(cxx SHARED ${LIBCXX_SOURCES} ${LIBCXX_HEADERS})
 else()
-  add_library(cxx STATIC
-    ${LIBCXX_SOURCES}
-    ${LIBCXX_HEADERS}
-    )
-endif()
-
-#if LIBCXX_CXX_ABI_LIBRARY_PATH is defined we want to add it to the search path.
-if (DEFINED LIBCXX_CXX_ABI_LIBRARY_PATH)
-  target_link_libraries(cxx "-L${LIBCXX_CXX_ABI_LIBRARY_PATH}")
+  add_library(cxx STATIC ${LIBCXX_SOURCES} ${LIBCXX_HEADERS})
 endif()
 
 if (DEFINED LIBCXX_CXX_ABI_DEPS)
   add_dependencies(cxx LIBCXX_CXX_ABI_DEPS)
 endif()
 
-set(libraries "")
-if (LIBCXX_ENABLE_STATIC_ABI_LIBRARY)
-    # TODO(ericwf): Remove these GNU specific linker flags and let CMake do the
-    # configuration. This will be more portable.
-    list(APPEND libraries "-Wl,--whole-archive" "-Wl,-Bstatic")
-    list(APPEND libraries "${LIBCXX_CXX_ABI_LIBRARY}")
-    list(APPEND libraries "-Wl,-Bdynamic" "-Wl,--no-whole-archive")
-else()
-    list(APPEND libraries "${LIBCXX_CXX_ABI_LIBRARY}")
+#if LIBCXX_CXX_ABI_LIBRARY_PATH is defined we want to add it to the search path.
+add_link_flags_if(LIBCXX_CXX_ABI_LIBRARY_PATH "-L${LIBCXX_CXX_ABI_LIBRARY_PATH}")
+
+add_library_flags_if(LIBCXX_COVERAGE_LIBRARY "${LIBCXX_COVERAGE_LIBRARY}")
+
+add_library_flags_if(LIBCXX_ENABLE_STATIC_ABI_LIBRARY "-Wl,--whole-archive" "-Wl,-Bstatic")
+add_library_flags("${LIBCXX_CXX_ABI_LIBRARY}")
+add_library_flags_if(LIBCXX_ENABLE_STATIC_ABI_LIBRARY "-Wl,-Bdynamic" "-Wl,--no-whole-archive")
+
+if (APPLE AND LLVM_USE_SANITIZER)
+  if ("${LLVM_USE_SANITIZER}" STREQUAL "Address")
+    set(LIBFILE "libclang_rt.asan_osx_dynamic.dylib")
+  elseif("${LLVM_USE_SANITIZER}" STREQUAL "Undefined")
+    set(LIBFILE "libclang_rt.ubsan_osx_dynamic.dylib")
+  else()
+    message(WARNING "LLVM_USE_SANITIZER=${LLVM_USE_SANITIZER} is not supported on OS X")
+  endif()
+  if (LIBFILE)
+    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=lib OUTPUT_VARIABLE LIBDIR RESULT_VARIABLE Result)
+    if (NOT ${Result} EQUAL "0")
+      message(FATAL "Failed to find library resource directory")
+    endif()
+    string(STRIP "${LIBDIR}" LIBDIR)
+    set(LIBDIR "${LIBDIR}/darwin/")
+    if (NOT IS_DIRECTORY "${LIBDIR}")
+      message(FATAL_ERROR "Cannot find compiler-rt directory on OS X required for LLVM_USE_SANITIZER")
+    endif()
+    set(LIBCXX_SANITIZER_LIBRARY "${LIBDIR}/${LIBFILE}")
+    set(LIBCXX_SANITIZER_LIBRARY "${LIBCXX_SANITIZER_LIBRARY}" PARENT_SCOPE)
+    message(STATUS "Manually linking compiler-rt library: ${LIBCXX_SANITIZER_LIBRARY}")
+    add_library_flags("${LIBCXX_SANITIZER_LIBRARY}")
+    add_link_flags("-Wl,-rpath,${LIBDIR}")
+  endif()
 endif()
 
 # Generate library list.
-append_if(libraries LIBCXX_HAS_PTHREAD_LIB pthread)
-append_if(libraries LIBCXX_HAS_C_LIB c)
-append_if(libraries LIBCXX_HAS_M_LIB m)
-append_if(libraries LIBCXX_HAS_RT_LIB rt)
-append_if(libraries LIBCXX_HAS_GCC_S_LIB gcc_s)
-
-target_link_libraries(cxx ${libraries})
+add_library_flags_if(LIBCXX_HAS_PTHREAD_LIB pthread)
+add_library_flags_if(LIBCXX_HAS_C_LIB c)
+add_library_flags_if(LIBCXX_HAS_M_LIB m)
+add_library_flags_if(LIBCXX_HAS_RT_LIB rt)
+add_library_flags_if(LIBCXX_HAS_GCC_S_LIB gcc_s)
 
 # Setup flags.
-append_if(LIBCXX_COMPILE_FLAGS LIBCXX_HAS_FPIC_FLAG -fPIC)
-append_if(LIBCXX_LINK_FLAGS LIBCXX_HAS_NODEFAULTLIBS_FLAG -nodefaultlibs)
+add_flags_if_supported(-fPIC)
+add_link_flags_if_supported(-nodefaultlibs)
 
-if ( APPLE )
+if ( APPLE AND (LIBCXX_CXX_ABI_LIBNAME STREQUAL "libcxxabi" OR
+                LIBCXX_CXX_ABI_LIBNAME STREQUAL "none"))
   if (NOT DEFINED LIBCXX_LIBCPPABI_VERSION)
     set(LIBCXX_LIBCPPABI_VERSION "2")
   endif()
 
   if ( CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "10.6" )
-    list(APPEND LIBCXX_COMPILE_FLAGS "-U__STRICT_ANSI__")
-    list(APPEND LIBCXX_LINK_FLAGS
+    add_definitions(-D__STRICT_ANSI__)
+    add_link_flags(
       "-compatibility_version 1"
       "-current_version 1"
       "-install_name /usr/lib/libc++.1.dylib"
@@ -96,7 +110,7 @@ if ( APPLE )
       set (OSX_RE_EXPORT_LINE "/usr/lib/libc++abi.dylib -Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/libc++abi${LIBCXX_LIBCPPABI_VERSION}.exp")
     endif()
 
-    list(APPEND LIBCXX_LINK_FLAGS
+    add_link_flags(
       "-compatibility_version 1"
       "-install_name /usr/lib/libc++.1.dylib"
       "-Wl,-unexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/libc++unexp.exp"
@@ -106,8 +120,9 @@ if ( APPLE )
   endif()
 endif()
 
-string(REPLACE ";" " " LIBCXX_COMPILE_FLAGS "${LIBCXX_COMPILE_FLAGS}")
-string(REPLACE ";" " " LIBCXX_LINK_FLAGS "${LIBCXX_LINK_FLAGS}")
+target_link_libraries(cxx ${LIBCXX_LIBRARIES})
+split_list(LIBCXX_COMPILE_FLAGS)
+split_list(LIBCXX_LINK_FLAGS)
 
 set_target_properties(cxx
   PROPERTIES

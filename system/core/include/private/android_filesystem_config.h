@@ -32,6 +32,8 @@
 #include "android_filesystem_capability.h"
 #endif
 
+#define CAP_MASK_LONG(cap_name)  (1ULL << (cap_name))
+
 /* This is the master Users and Groups config for the platform.
  * DO NOT EVER RENUMBER
  */
@@ -78,6 +80,7 @@
 #define AID_LOGD          1036  /* log daemon */
 #define AID_SHARED_RELRO  1037  /* creator of shared GNU RELRO files */
 #define AID_DBUS          1038  /* dbus-daemon IPC broker process */
+#define AID_TLSDATE       1039  /* tlsdate unprivileged user */
 
 #define AID_SHELL         2000  /* adb and debug shell user */
 #define AID_CACHE         2001  /* cache access */
@@ -98,6 +101,7 @@
 #define AID_NET_BW_STATS  3006  /* read bandwidth statistics */
 #define AID_NET_BW_ACCT   3007  /* change bandwidth statistics accounting */
 #define AID_NET_BT_STACK  3008  /* bluetooth: access config files */
+#define AID_READPROC      3009  /* Allow /proc read access */
 
 /* The range 5000-5999 is also reserved for OEM, and must never be used here. */
 #define AID_OEM_RESERVED_2_START 5000
@@ -174,6 +178,7 @@ static const struct android_id_info android_ids[] = {
     { "logd",          AID_LOGD, },
     { "shared_relro",  AID_SHARED_RELRO, },
     { "dbus",          AID_DBUS, },
+    { "tlsdate",       AID_TLSDATE, },
 
     { "shell",         AID_SHELL, },
     { "cache",         AID_CACHE, },
@@ -187,6 +192,7 @@ static const struct android_id_info android_ids[] = {
     { "net_bw_stats",  AID_NET_BW_STATS, },
     { "net_bw_acct",   AID_NET_BW_ACCT, },
     { "net_bt_stack",  AID_NET_BT_STACK, },
+    { "readproc",      AID_READPROC, },
 
     { "everybody",     AID_EVERYBODY, },
     { "misc",          AID_MISC, },
@@ -212,13 +218,13 @@ __BEGIN_DECLS
  * Used in:
  *  build/tools/fs_config/fs_config.c
  *  build/tools/fs_get_stats/fs_get_stats.c
- *  external/genext2fs/genext2fs.c
+ *  system/extras/ext4_utils/make_ext4fs_main.c
  *  external/squashfs-tools/squashfs-tools/android.c
  *  system/core/cpio/mkbootfs.c
  *  system/core/adb/file_sync_service.cpp
  *  system/extras/ext4_utils/canned_fs_config.c
  */
-void fs_config(const char *path, int dir,
+void fs_config(const char *path, int dir, const char *target_out_path,
                unsigned *uid, unsigned *gid, unsigned *mode, uint64_t *capabilities);
 
 ssize_t fs_config_generate(char *buffer, size_t length, const struct fs_path_config *pc);

@@ -20,8 +20,7 @@
 # You can set TARGET_ARCH_VARIANT to use an arch version other
 # than ARMv5TE. Each value should correspond to a file named
 # $(BUILD_COMBOS)/arch/<name>.mk which must contain
-# makefile variable definitions similar to the preprocessor
-# defines in build/core/combo/include/arch/<combo>/AndroidConfig.h. Their
+# makefile variable definitions. Their
 # purpose is to allow module Android.mk files to selectively compile
 # different versions of code based upon the funtionality and
 # instructions available in a given architecture version.
@@ -64,13 +63,16 @@ TARGET_OBJCOPY := $(TARGET_TOOLS_PREFIX)objcopy
 TARGET_LD := $(TARGET_TOOLS_PREFIX)ld
 TARGET_READELF := $(TARGET_TOOLS_PREFIX)readelf
 TARGET_STRIP := $(TARGET_TOOLS_PREFIX)strip
+TARGET_NM := $(TARGET_TOOLS_PREFIX)nm
+
+define $(combo_var_prefix)transform-shared-lib-to-toc
+$(call _gen_toc_command_for_elf,$(1),$(2))
+endef
 
 TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
 TARGET_GLOBAL_CFLAGS += \
     -fno-strict-aliasing \
-
-android_config_h := $(call select-android-config-h,linux-arm64)
 
 TARGET_GLOBAL_CFLAGS += \
 			-fstack-protector \
@@ -84,8 +86,6 @@ TARGET_GLOBAL_CFLAGS += \
 			-no-canonical-prefixes \
 			-fno-canonical-system-headers \
 			$(arch_variant_cflags) \
-			-include $(android_config_h) \
-			-I $(dir $(android_config_h))
 
 # Help catch common 32/64-bit errors.
 TARGET_GLOBAL_CFLAGS += \
@@ -142,6 +142,7 @@ TARGET_LIBGCOV := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) \
 	-print-file-name=libgcov.a)
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
+KERNEL_HEADERS_COMMON += $(libc_root)/kernel/common
 KERNEL_HEADERS_ARCH   := $(libc_root)/kernel/uapi/asm-$(TARGET_ARCH)
 KERNEL_HEADERS := $(KERNEL_HEADERS_COMMON) $(KERNEL_HEADERS_ARCH)
 

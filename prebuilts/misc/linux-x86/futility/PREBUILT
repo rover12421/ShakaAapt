@@ -1,0 +1,2 @@
+The binaries in this prebuilt directory can be rebuilt using
+the source in external/vboot_reference with build command "make futility-host".

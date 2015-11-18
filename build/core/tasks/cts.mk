@@ -21,7 +21,7 @@ JUNIT_HOST_JAR := $(HOST_OUT_JAVA_LIBRARIES)/junit.jar
 HOSTTESTLIB_JAR := $(HOST_OUT_JAVA_LIBRARIES)/hosttestlib.jar
 TF_JAR := $(HOST_OUT_JAVA_LIBRARIES)/tradefed-prebuilt.jar
 CTS_TF_JAR := $(HOST_OUT_JAVA_LIBRARIES)/cts-tradefed.jar
-CTS_TF_EXEC_PATH := $(HOST_OUT_EXECUTABLES)/cts-tradefed
+CTS_TF_EXEC_PATH ?= $(HOST_OUT_EXECUTABLES)/cts-tradefed
 CTS_TF_README_PATH := $(cts_tools_src_dir)/tradefed-host/README
 
 VMTESTSTF_INTERMEDIATES :=$(call intermediates-dir-for,JAVA_LIBRARIES,vm-tests-tf,HOST)
@@ -64,8 +64,8 @@ CTS_CORE_CASE_LIST += \
 
 
 CTS_TEST_JAR_LIST := \
-        cts-junit \
-        CtsJdwp
+	cts-junit \
+	CtsJdwp
 
 # Depend on the full package paths rather than the phony targets to avoid
 # rebuilding the packages every time.
@@ -73,23 +73,30 @@ CTS_CORE_CASES := $(foreach pkg,$(CTS_CORE_CASE_LIST),$(call intermediates-dir-f
 CTS_TEST_JAR_FILES := $(foreach c,$(CTS_TEST_JAR_LIST),$(call intermediates-dir-for,JAVA_LIBRARIES,$(c))/javalib.jar)
 
 -include cts/CtsTestCaseList.mk
-CTS_CASE_LIST := $(CTS_CORE_CASE_LIST) $(CTS_TEST_CASE_LIST)
 
 # A module may have mutliple installed files (e.g. split apks)
 CTS_CASE_LIST_APKS :=
-CTS_CASE_LIST_APKS_DIR := $(cts_dir)/$(cts_name)/repository/testcases/
-$(foreach m, $(CTS_CASE_LIST),\
+$(foreach m, $(CTS_TEST_CASE_LIST),\
+  $(foreach fp, $(ALL_MODULES.$(m).BUILT_INSTALLED),\
+    $(eval pair := $(subst :,$(space),$(fp)))\
+    $(eval CTS_CASE_LIST_APKS += $(CTS_TESTCASES_OUT)/$(notdir $(word 2,$(pair))))))\
+$(foreach m, $(CTS_CORE_CASE_LIST),\
   $(foreach fp, $(ALL_MODULES.$(m).BUILT_INSTALLED),\
     $(eval pair := $(subst :,$(space),$(fp)))\
     $(eval built := $(word 1,$(pair)))\
-    $(eval installed := $(CTS_CASE_LIST_APKS_DIR)/$(notdir $(word 2,$(pair))))\
+    $(eval installed := $(CTS_TESTCASES_OUT)/$(notdir $(word 2,$(pair))))\
     $(eval $(call copy-one-file, $(built), $(installed)))\
     $(eval CTS_CASE_LIST_APKS += $(installed))))
+
+CTS_CASE_LIST_JARS :=
+$(foreach m, $(CTS_TEST_JAR_LIST),\
+  $(eval CTS_CASE_LIST_JARS += $(CTS_TESTCASES_OUT)/$(m).jar))
 
 CTS_SHARED_LIBS :=
 
 DEFAULT_TEST_PLAN := $(cts_dir)/$(cts_name)/resource/plans
-$(cts_dir)/all_cts_files_stamp: $(CTS_CORE_CASES) $(CTS_TEST_CASES) $(CTS_CASE_LIST_APKS) $(JUNIT_HOST_JAR) $(HOSTTESTLIB_JAR) $(CTS_HOST_LIBRARY_JARS) $(TF_JAR) $(VMTESTSTF_JAR) $(CTS_TF_JAR) $(CTS_TF_EXEC_PATH) $(CTS_TF_README_PATH) $(ACP) $(CTS_TEST_JAR_FILES) $(CTS_SHARED_LIBS)
+$(cts_dir)/all_cts_files_stamp: $(CTS_CORE_CASES) $(CTS_TEST_JAR_FILES) $(CTS_TEST_CASES) $(CTS_CASE_LIST_APKS) $(CTS_CASE_LIST_JARS) $(JUNIT_HOST_JAR) $(HOSTTESTLIB_JAR) $(CTS_HOST_LIBRARY_JARS) $(TF_JAR) $(VMTESTSTF_JAR) $(CTS_TF_JAR) $(CTS_TF_EXEC_PATH) $(CTS_TF_README_PATH) $(ADDITIONAL_TF_JARS) $(ACP) $(CTS_SHARED_LIBS)
+
 # Make necessary directory for CTS
 	$(hide) mkdir -p $(TMP_DIR)
 	$(hide) mkdir -p $(PRIVATE_DIR)/docs
@@ -97,12 +104,9 @@ $(cts_dir)/all_cts_files_stamp: $(CTS_CORE_CASES) $(CTS_TEST_CASES) $(CTS_CASE_L
 	$(hide) mkdir -p $(PRIVATE_DIR)/repository/testcases
 	$(hide) mkdir -p $(PRIVATE_DIR)/repository/plans
 # Copy executable and JARs to CTS directory
-	$(hide) $(ACP) -fp $(VMTESTSTF_JAR) $(PRIVATE_DIR)/repository/testcases
-	$(hide) $(ACP) -fp $(HOSTTESTLIB_JAR) $(CTS_HOST_LIBRARY_JARS) $(TF_JAR) $(CTS_TF_JAR) $(CTS_TF_EXEC_PATH) $(CTS_TF_README_PATH) $(PRIVATE_DIR)/tools
+	$(hide) $(ACP) -fp $(VMTESTSTF_JAR) $(CTS_TESTCASES_OUT)
+	$(hide) $(ACP) -fp $(HOSTTESTLIB_JAR) $(CTS_HOST_LIBRARY_JARS) $(TF_JAR) $(CTS_TF_JAR) $(CTS_TF_EXEC_PATH) $(ADDITIONAL_TF_JARS) $(CTS_TF_README_PATH) $(PRIVATE_DIR)/tools
 	$(hide) $(call copy-files-with-structure, $(CTS_SHARED_LIBS),$(HOST_OUT)/,$(PRIVATE_DIR))
-# Change mode of the executables
-	$(foreach jar,$(CTS_TEST_JAR_LIST),$(call copy-testcase-jar,$(jar)))
-	$(foreach testcase,$(CTS_TEST_CASES),$(call copy-testcase,$(testcase)))
 	$(hide) touch $@
 
 # Generate the test descriptions for the core-tests
@@ -367,8 +371,7 @@ $(CORE_VM_TEST_TF_DESC): $(HOST_OUT_JAVA_LIBRARIES)/descGen.jar $(JUNIT_HOST_JAR
 # Generate the default test plan for User.
 # Usage: buildCts.py <testRoot> <ctsOutputDir> <tempDir> <androidRootDir> <docletPath>
 
-$(DEFAULT_TEST_PLAN): $(cts_dir)/all_cts_files_stamp $(cts_tools_src_dir)/utils/buildCts.py $(HOST_OUT_JAVA_LIBRARIES)/descGen.jar $(CTS_CORE_XMLS) $(CTS_TEST_XMLS) $(CORE_VM_TEST_TF_DESC) | $(ACP)
-	$(hide) $(ACP) -fp $(CTS_CORE_XMLS) $(CTS_TEST_XMLS) $(CORE_VM_TEST_TF_DESC) $(PRIVATE_DIR)/repository/testcases
+$(DEFAULT_TEST_PLAN): $(cts_dir)/all_cts_files_stamp $(cts_tools_src_dir)/utils/buildCts.py $(HOST_OUT_JAVA_LIBRARIES)/descGen.jar $(CTS_CORE_XMLS) $(CTS_TEST_XMLS) $(CORE_VM_TEST_TF_DESC)
 	$(hide) $(cts_tools_src_dir)/utils/buildCts.py cts/tests/tests/ $(PRIVATE_DIR) $(TMP_DIR) \
 		$(TOP) $(HOST_OUT_JAVA_LIBRARIES)/descGen.jar
 	$(hide) mkdir -p $(dir $@) && touch $@
@@ -384,22 +387,8 @@ $(INTERNAL_CTS_TARGET): PRIVATE_DIR := $(cts_dir)/$(cts_name)
 $(INTERNAL_CTS_TARGET): TMP_DIR := $(cts_dir)/temp
 $(INTERNAL_CTS_TARGET): $(cts_dir)/all_cts_files_stamp $(DEFAULT_TEST_PLAN)
 	$(hide) echo "Package CTS: $@"
-	$(hide) cd $(dir $@) && zip -rq $(notdir $@) $(PRIVATE_NAME)
+	$(hide) cd $(dir $@) && zip -rqX $(notdir $@) $(PRIVATE_NAME)
 
 .PHONY: cts
 cts: $(INTERNAL_CTS_TARGET) adb
 $(call dist-for-goals,cts,$(INTERNAL_CTS_TARGET))
-
-
-define copy-testcase
-
-$(hide) $(ACP) -fp $(1) $(PRIVATE_DIR)/repository/testcases/$(notdir $1)
-
-endef
-
-define copy-testcase-jar
-
-$(hide) $(ACP) -fp $(call intermediates-dir-for,JAVA_LIBRARIES,$(1))/javalib.jar \
-	$(PRIVATE_DIR)/repository/testcases/$(1).jar
-
-endef

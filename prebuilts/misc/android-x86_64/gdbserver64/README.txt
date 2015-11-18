@@ -1,9 +1,6 @@
-Build instruction:
+The Android platform gdb is built as part of the NDK build, from sources at https://android.googlesource.com/toolchain/gdb/.
 
-  cd $NDK
-  ./build/tools/download-toolchain-sources.sh /tmp/ndk-$USER/src
-  ./build/tools/gen-platforms.sh --dst-dir=$NDK --ndk-dir=$NDK --overlay --arch=x86_64 --gcc-version=4.8
-  ./build/tools/build-gdbserver.sh /tmp/ndk-$USER/src $NDK -j32 x86_64-4.8 --gdb-version=7.6
+To build it, follow the steps at https://android.googlesource.com/platform/ndk/+/master/README.md, and run `python checkbuild.py --module gdbserver`.
 
-Current prebuilt version is against AOSP-toolchain/gdb/gdb-7.6
-commit 37c2cd1af0dd58048d965bac278fc5d83fea65a0
+The current prebuilt version is built from the sources described by the manifest xml file in this directory.
+

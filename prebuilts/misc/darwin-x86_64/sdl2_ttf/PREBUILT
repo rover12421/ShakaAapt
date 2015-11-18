@@ -1,0 +1,3 @@
+Taken from MacPorts installation.
+
+Install libsdl2_ttf-2.0.12 using MacPorts. Grab headers and libraries from /opt/local.

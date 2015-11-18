@@ -88,6 +88,8 @@ static const struct fs_path_config android_dirs[] = {
     { 00771, AID_SHARED_RELRO, AID_SHARED_RELRO, 0, "data/misc/shared_relro" },
     { 00775, AID_MEDIA_RW, AID_MEDIA_RW, 0, "data/media" },
     { 00775, AID_MEDIA_RW, AID_MEDIA_RW, 0, "data/media/Music" },
+    { 00750, AID_ROOT,   AID_SHELL,  0, "data/nativetest" },
+    { 00750, AID_ROOT,   AID_SHELL,  0, "data/nativetest64" },
     { 00771, AID_SYSTEM, AID_SYSTEM, 0, "data" },
     { 00755, AID_ROOT,   AID_SYSTEM, 0, "mnt" },
     { 00755, AID_ROOT,   AID_ROOT,   0, "root" },
@@ -125,18 +127,21 @@ static const struct fs_path_config android_files[] = {
     { 00644, AID_MEDIA_RW,  AID_MEDIA_RW,  0, "data/media/*" },
     { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app-private/*" },
     { 00644, AID_APP,       AID_APP,       0, "data/data/*" },
+    { 00640, AID_ROOT,      AID_SHELL,     0, "data/nativetest/tests.txt" },
+    { 00640, AID_ROOT,      AID_SHELL,     0, "data/nativetest64/tests.txt" },
+    { 00750, AID_ROOT,      AID_SHELL,     0, "data/nativetest/*" },
+    { 00750, AID_ROOT,      AID_SHELL,     0, "data/nativetest64/*" },
 
-    /* the following five files are INTENTIONALLY set-uid, but they
+    /* the following four files are INTENTIONALLY set-uid, but they
      * are NOT included on user builds. */
     { 04750, AID_ROOT,      AID_SHELL,     0, "system/xbin/su" },
     { 06755, AID_ROOT,      AID_ROOT,      0, "system/xbin/librank" },
-    { 06755, AID_ROOT,      AID_ROOT,      0, "system/xbin/procrank" },
     { 06755, AID_ROOT,      AID_ROOT,      0, "system/xbin/procmem" },
     { 04770, AID_ROOT,      AID_RADIO,     0, "system/bin/pppd-ril" },
 
     /* the following files have enhanced capabilities and ARE included in user builds. */
-    { 00750, AID_ROOT,      AID_SHELL,     (1ULL << CAP_SETUID) | (1ULL << CAP_SETGID), "system/bin/run-as" },
-    { 00700, AID_SYSTEM,    AID_SHELL,     (1ULL << CAP_BLOCK_SUSPEND), "system/bin/inputflinger" },
+    { 00750, AID_ROOT,      AID_SHELL,     CAP_MASK_LONG(CAP_SETUID) | CAP_MASK_LONG(CAP_SETGID), "system/bin/run-as" },
+    { 00700, AID_SYSTEM,    AID_SHELL,     CAP_MASK_LONG(CAP_BLOCK_SUSPEND), "system/bin/inputflinger" },
 
     { 00750, AID_ROOT,      AID_ROOT,      0, "system/bin/uncrypt" },
     { 00750, AID_ROOT,      AID_ROOT,      0, "system/bin/install-recovery.sh" },
@@ -154,14 +159,21 @@ static const struct fs_path_config android_files[] = {
     { 00644, AID_ROOT,      AID_ROOT,      0, 0 },
 };
 
-static int fs_config_open(int dir)
+static int fs_config_open(int dir, const char *target_out_path)
 {
     int fd = -1;
 
-    const char *out = getenv("OUT");
-    if (out && *out) {
+    if (target_out_path && *target_out_path) {
+        /* target_out_path is the path to the directory holding content of system partition
+           but as we cannot guaranty it ends with '/system' we need this below skip_len logic */
         char *name = NULL;
-        if (asprintf(&name, "%s%s", out, dir ? conf_dir : conf_file) != -1) {
+        int target_out_path_len = strlen(target_out_path);
+        int skip_len = strlen("/system");
+
+        if (target_out_path[target_out_path_len] == '/') {
+            skip_len++;
+        }
+        if (asprintf(&name, "%s%s", target_out_path, (dir ? conf_dir : conf_file) + skip_len) != -1) {
             fd = TEMP_FAILURE_RETRY(open(name, O_RDONLY | O_BINARY));
             free(name);
         }
@@ -191,7 +203,7 @@ static bool fs_config_cmp(bool dir, const char *prefix, size_t len,
     return !strncmp(prefix, path, len);
 }
 
-void fs_config(const char *path, int dir,
+void fs_config(const char *path, int dir, const char *target_out_path,
                unsigned *uid, unsigned *gid, unsigned *mode, uint64_t *capabilities)
 {
     const struct fs_path_config *pc;
@@ -203,7 +215,7 @@ void fs_config(const char *path, int dir,
 
     plen = strlen(path);
 
-    fd = fs_config_open(dir);
+    fd = fs_config_open(dir, target_out_path);
     if (fd >= 0) {
         struct fs_path_config_from_file header;
 

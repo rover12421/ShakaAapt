@@ -913,6 +913,7 @@ status_t compileResourceFile(Bundle* bundle,
         if (code == ResXMLTree::START_TAG) {
             const String16* curTag = NULL;
             String16 curType;
+            String16 curName;
             int32_t curFormat = ResTable_map::TYPE_ANY;
             bool curIsBag = false;
             bool curIsBagReplaceOnOverwrite = false;
@@ -1321,6 +1322,10 @@ status_t compileResourceFile(Bundle* bundle,
                 ssize_t attri = block.indexOfAttribute(NULL, "type");
                 if (attri >= 0) {
                     curType = String16(block.getAttributeStringValue(attri, &len));
+                    ssize_t nameIdx = block.indexOfAttribute(NULL, "name");
+                    if (nameIdx >= 0) {
+                        curName = String16(block.getAttributeStringValue(nameIdx, &len));
+                    }
                     ssize_t formatIdx = block.indexOfAttribute(NULL, "format");
                     if (formatIdx >= 0) {
                         String16 formatStr = String16(block.getAttributeStringValue(
@@ -1363,6 +1368,9 @@ status_t compileResourceFile(Bundle* bundle,
                 }
                 
                 if (name.size() > 0) {
+                    if (locale.size() == 0) {
+                        outTable->addDefaultLocalization(name);
+                    }
                     if (translatable == false16) {
                         curIsFormatted = false;
                         // Untranslatable strings must only exist in the default [empty] locale
@@ -1658,6 +1666,9 @@ status_t compileResourceFile(Bundle* bundle,
                     hasErrors = localHasErrors = true;
                 }
                 else if (err == NO_ERROR) {
+                    if (curType == string16 && !curParams.language[0] && !curParams.country[0]) {
+                        outTable->addDefaultLocalization(curName);
+                    }
                     if (curIsPseudolocalizable && localeIsDefined(curParams)
                             && bundle->getPseudolocalize() > 0) {
                         // pseudolocalize here
@@ -1749,36 +1760,25 @@ ResourceTable::ResourceTable(Bundle* bundle, const String16& assetsPackage, Reso
     , mNumLocal(0)
     , mBundle(bundle)
 {
-    //[Rover12421]> port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-    ssize_t packageId = mBundle->getForcedPackageId();
-    /**
-     * port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
-     * 的时候是`packageId == -1`
-     * [skip] only get packageId, if forced isn't passed
-     * #25db569 的时候修改为`packageId == -1`
-     */
-    if (packageId == -1) {
-//    ssize_t packageId = -1;
-        switch (mPackageType) {
-            case App:
-            case AppFeature:
-                packageId = 0x7f;
-                break;
+    ssize_t packageId = -1;
+    switch (mPackageType) {
+        case App:
+        case AppFeature:
+            packageId = 0x7f;
+            break;
 
-            case System:
-                packageId = 0x01;
-                break;
+        case System:
+            packageId = 0x01;
+            break;
 
-            case SharedLibrary:
-                packageId = 0x00;
-                break;
+        case SharedLibrary:
+            packageId = 0x00;
+            break;
 
-            default:
-                assert(0);
-                break;
-        }
+        default:
+            assert(0);
+            break;
     }
-    //[Rover12421]< port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
     sp<Package> package = new Package(mAssetsPackage, packageId);
     mPackages.add(assetsPackage, package);
     mOrderedPackages.add(package);
@@ -2633,8 +2633,11 @@ status_t ResourceTable::assignResourceIds()
     return firstError;
 }
 
-status_t ResourceTable::addSymbols(const sp<AaptSymbols>& outSymbols) {
+status_t ResourceTable::addSymbols(const sp<AaptSymbols>& outSymbols,
+        bool skipSymbolsWithoutDefaultLocalization) {
     const size_t N = mOrderedPackages.size();
+    const String8 defaultLocale;
+    const String16 stringType("string");
     size_t pi;
 
     for (pi=0; pi<N; pi++) {
@@ -2675,6 +2678,19 @@ status_t ResourceTable::addSymbols(const sp<AaptSymbols>& outSymbols) {
                     return UNKNOWN_ERROR;
                 }
                 if (Res_GETPACKAGE(rid) + 1 == p->getAssignedId()) {
+
+                    if (skipSymbolsWithoutDefaultLocalization &&
+                            t->getName() == stringType) {
+
+                        // Don't generate symbols for strings without a default localization.
+                        if (mHasDefaultLocalization.find(c->getName())
+                                == mHasDefaultLocalization.end()) {
+                            // printf("Skip symbol [%08x] %s\n", rid,
+                            //          String8(c->getName()).string());
+                            continue;
+                        }
+                    }
+
                     typeSymbols->addSymbol(String8(c->getName()), rid, c->getPos());
                     
                     String16 comment(c->getComment());
@@ -2695,6 +2711,12 @@ void
 ResourceTable::addLocalization(const String16& name, const String8& locale, const SourcePos& src)
 {
     mLocalizations[name][locale] = src;
+}
+
+void
+ResourceTable::addDefaultLocalization(const String16& name)
+{
+    mHasDefaultLocalization.insert(name);
 }
 
 
@@ -4444,6 +4466,38 @@ static int getMinSdkVersion(const Bundle* bundle) {
     return 0;
 }
 
+bool ResourceTable::shouldGenerateVersionedResource(
+        const sp<ResourceTable::ConfigList>& configList,
+        const ConfigDescription& sourceConfig,
+        const int sdkVersionToGenerate) {
+    assert(sdkVersionToGenerate > sourceConfig.sdkVersion);
+    const DefaultKeyedVector<ConfigDescription, sp<ResourceTable::Entry>>& entries
+            = configList->getEntries();
+    ssize_t idx = entries.indexOfKey(sourceConfig);
+
+    // The source config came from this list, so it should be here.
+    assert(idx >= 0);
+
+    // The next configuration either only varies in sdkVersion, or it is completely different
+    // and therefore incompatible. If it is incompatible, we must generate the versioned resource.
+
+    // NOTE: The ordering of configurations takes sdkVersion as higher precedence than other
+    // qualifiers, so we need to iterate through the entire list to be sure there
+    // are no higher sdk level versions of this resource.
+    ConfigDescription tempConfig(sourceConfig);
+    for (size_t i = static_cast<size_t>(idx) + 1; i < entries.size(); i++) {
+        const ConfigDescription& nextConfig = entries.keyAt(i);
+        tempConfig.sdkVersion = nextConfig.sdkVersion;
+        if (tempConfig == nextConfig) {
+            // The two configs are the same, check the sdk version.
+            return sdkVersionToGenerate < nextConfig.sdkVersion;
+        }
+    }
+
+    // No match was found, so we should generate the versioned resource.
+    return true;
+}
+
 /**
  * Modifies the entries in the resource table to account for compatibility
  * issues with older versions of Android.
@@ -4487,9 +4541,6 @@ static int getMinSdkVersion(const Bundle* bundle) {
  * attribute will be respected.
  */
 status_t ResourceTable::modifyForCompat(const Bundle* bundle) {
-    //[Rover12421]>
-    return NO_ERROR;
-    //[Rover12421]<
     const int minSdk = getMinSdkVersion(bundle);
     if (minSdk >= SDK_LOLLIPOP_MR1) {
         // Lollipop MR1 and up handles public attributes differently, no
@@ -4555,6 +4606,11 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle) {
                     for (size_t i = 0; i < sdkCount; i++) {
                         const int sdkLevel = attributesToRemove.keyAt(i);
 
+                        if (!shouldGenerateVersionedResource(c, config, sdkLevel)) {
+                            // There is a style that will override this generated one.
+                            continue;
+                        }
+
                         // Duplicate the entry under the same configuration
                         // but with sdkVersion == sdkLevel.
                         ConfigDescription newConfig(config);
@@ -4591,13 +4647,7 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle) {
 
                 const size_t entriesToAddCount = entriesToAdd.size();
                 for (size_t i = 0; i < entriesToAddCount; i++) {
-                    if (entries.indexOfKey(entriesToAdd[i].key) >= 0) {
-                        // An entry already exists for this config.
-                        // That means that any attributes that were
-                        // defined in L in the original bag will be overriden
-                        // anyways on L devices, so we do nothing.
-                        continue;
-                    }
+                    assert(entries.indexOfKey(entriesToAdd[i].key) < 0);
 
                     if (bundle->getVerbose()) {
                         entriesToAdd[i].value->getPos()
@@ -4625,9 +4675,9 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
                                         const String16& resourceName,
                                         const sp<AaptFile>& target,
                                         const sp<XMLNode>& root) {
-    //[Rover12421]>
-    return NO_ERROR;
-    //[Rover12421]<
+    const String16 vector16("vector");
+    const String16 animatedVector16("animated-vector");
+
     const int minSdk = getMinSdkVersion(bundle);
     if (minSdk >= SDK_LOLLIPOP_MR1) {
         // Lollipop MR1 and up handles public attributes differently, no
@@ -4637,20 +4687,25 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
 
     const ConfigDescription config(target->getGroupEntry().toParams());
     if (target->getResourceType() == "" || config.sdkVersion >= SDK_LOLLIPOP_MR1) {
-        // Skip resources that have no type (AndroidManifest.xml) or are already version qualified with v21
-        // or higher.
+        // Skip resources that have no type (AndroidManifest.xml) or are already version qualified
+        // with v21 or higher.
         return NO_ERROR;
     }
 
     sp<XMLNode> newRoot = NULL;
-    ConfigDescription newConfig(target->getGroupEntry().toParams());
-    newConfig.sdkVersion = SDK_LOLLIPOP_MR1;
+    int sdkVersionToGenerate = SDK_LOLLIPOP_MR1;
 
     Vector<sp<XMLNode> > nodesToVisit;
     nodesToVisit.push(root);
     while (!nodesToVisit.isEmpty()) {
         sp<XMLNode> node = nodesToVisit.top();
         nodesToVisit.pop();
+
+        if (bundle->getNoVersionVectors() && (node->getElementName() == vector16 ||
+                    node->getElementName() == animatedVector16)) {
+            // We were told not to version vector tags, so skip the children here.
+            continue;
+        }
 
         const Vector<XMLNode::attribute_entry>& attrs = node->getAttributes();
         for (size_t i = 0; i < attrs.size(); i++) {
@@ -4664,9 +4719,7 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
                 // Find the smallest sdk version that we need to synthesize for
                 // and do that one. Subsequent versions will be processed on
                 // the next pass.
-                if (sdkLevel < newConfig.sdkVersion) {
-                    newConfig.sdkVersion = sdkLevel;
-                }
+                sdkVersionToGenerate = std::min(sdkLevel, sdkVersionToGenerate);
 
                 if (bundle->getVerbose()) {
                     SourcePos(node->getFilename(), node->getStartLineNumber()).printf(
@@ -4696,8 +4749,10 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
     // Look to see if we already have an overriding v21 configuration.
     sp<ConfigList> cl = getConfigList(String16(mAssets->getPackage()),
             String16(target->getResourceType()), resourceName);
-    if (cl->getEntries().indexOfKey(newConfig) < 0) {
+    if (shouldGenerateVersionedResource(cl, config, sdkVersionToGenerate)) {
         // We don't have an overriding entry for v21, so we must duplicate this one.
+        ConfigDescription newConfig(config);
+        newConfig.sdkVersion = sdkVersionToGenerate;
         sp<AaptFile> newFile = new AaptFile(target->getSourceFile(),
                 AaptGroupEntry(newConfig), target->getResourceType());
         String8 resPath = String8::format("res/%s/%s",
@@ -4735,7 +4790,8 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
     return NO_ERROR;
 }
 
-void ResourceTable::getDensityVaryingResources(KeyedVector<Symbol, Vector<SymbolDefinition> >& resources) {
+void ResourceTable::getDensityVaryingResources(
+        KeyedVector<Symbol, Vector<SymbolDefinition> >& resources) {
     const ConfigDescription nullConfig;
 
     const size_t packageCount = mOrderedPackages.size();
@@ -4746,19 +4802,23 @@ void ResourceTable::getDensityVaryingResources(KeyedVector<Symbol, Vector<Symbol
             const Vector<sp<ConfigList> >& configs = types[t]->getOrderedConfigs();
             const size_t configCount = configs.size();
             for (size_t c = 0; c < configCount; c++) {
-                const DefaultKeyedVector<ConfigDescription, sp<Entry> >& configEntries = configs[c]->getEntries();
+                const DefaultKeyedVector<ConfigDescription, sp<Entry> >& configEntries
+                        = configs[c]->getEntries();
                 const size_t configEntryCount = configEntries.size();
                 for (size_t ce = 0; ce < configEntryCount; ce++) {
                     const ConfigDescription& config = configEntries.keyAt(ce);
                     if (AaptConfig::isDensityOnly(config)) {
                         // This configuration only varies with regards to density.
-                        const Symbol symbol(mOrderedPackages[p]->getName(),
+                        const Symbol symbol(
+                                mOrderedPackages[p]->getName(),
                                 types[t]->getName(),
                                 configs[c]->getName(),
-                                getResId(mOrderedPackages[p], types[t], configs[c]->getEntryIndex()));
+                                getResId(mOrderedPackages[p], types[t],
+                                         configs[c]->getEntryIndex()));
 
                         const sp<Entry>& entry = configEntries.valueAt(ce);
-                        AaptUtil::appendValue(resources, symbol, SymbolDefinition(symbol, config, entry->getPos()));
+                        AaptUtil::appendValue(resources, symbol,
+                                              SymbolDefinition(symbol, config, entry->getPos()));
                     }
                 }
             }

@@ -22,12 +22,12 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libutils_tests
 
 LOCAL_SRC_FILES := \
-    BasicHashtable_test.cpp \
     BlobCache_test.cpp \
     BitSet_test.cpp \
     Looper_test.cpp \
     LruCache_test.cpp \
     String8_test.cpp \
+    StrongPointer_test.cpp \
     Unicode_test.cpp \
     Vector_test.cpp \
 
@@ -38,3 +38,11 @@ LOCAL_SHARED_LIBRARIES := \
     libutils \
 
 include $(BUILD_NATIVE_TEST)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libutils_tests_host
+LOCAL_SRC_FILES := Vector_test.cpp
+LOCAL_STATIC_LIBRARIES := libutils liblog
+
+include $(BUILD_HOST_NATIVE_TEST)

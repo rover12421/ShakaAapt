@@ -28,7 +28,6 @@
 namespace android {
 // ---------------------------------------------------------------------------
 
-class SharedBuffer;
 class String8;
 
 // ---------------------------------------------------------------------------
@@ -129,11 +128,6 @@ public:
     // returns an array of rect which has the same life-time has this
     // Region object.
     Rect const* getArray(size_t* count) const;
-
-    // returns a SharedBuffer as well as the number of rects.
-    // ownership is transfered to the caller.
-    // the caller must call SharedBuffer::release() to free the memory.
-    SharedBuffer const* getSharedBuffer(size_t* count) const;
 
     /* no user serviceable parts here... */
 

@@ -23,6 +23,7 @@
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 #include <utils/Timers.h>
+#include <utils/String16.h>
 
 #include <gui/BitTube.h>
 
@@ -52,7 +53,7 @@ public:
 
     enum { MAX_RECEIVE_BUFFER_EVENT_COUNT = 256 };
 
-            SensorEventQueue(const sp<ISensorEventConnection>& connection);
+    SensorEventQueue(const sp<ISensorEventConnection>& connection);
     virtual ~SensorEventQueue();
     virtual void onFirstRef();
 
@@ -77,6 +78,8 @@ public:
     status_t flush() const;
     // Send an ack for every wake_up sensor event that is set to WAKE_UP_SENSOR_EVENT_NEEDS_ACK.
     void sendAck(const ASensorEvent* events, int count);
+
+    status_t injectSensorEvent(const ASensorEvent& event);
 private:
     sp<Looper> getLooper() const;
     sp<ISensorEventConnection> mSensorEventConnection;

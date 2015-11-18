@@ -9,7 +9,7 @@
 #
 # Output variables:
 #   my_jni_shared_libraries, my_jni_shared_libraries_abi, if we are going to embed the libraries into the apk;
-#   my_extracted_jni_libs, if we extract jni libs from prebuilt apk.
+#   my_embedded_prebuilt_jni_libs, prebuilt jni libs embedded in prebuilt apk.
 #
 
 my_jni_shared_libraries := \
@@ -19,7 +19,7 @@ my_jni_shared_libraries := \
 
 # App-specific lib path.
 my_app_lib_path := $(dir $(LOCAL_INSTALLED_MODULE))lib/$(TARGET_$(my_2nd_arch_prefix)ARCH)
-my_extracted_jni_libs :=
+my_embedded_prebuilt_jni_libs :=
 
 ifdef my_embed_jni
 # App explicitly requires the prebuilt NDK stl shared libraies.
@@ -55,7 +55,8 @@ ifneq ($(my_jni_shared_libraries),)
 my_jni_filenames := $(notdir $(my_jni_shared_libraries))
 # Make sure the JNI libraries get installed
 my_shared_library_path := $($(my_2nd_arch_prefix)TARGET_OUT$(partition_tag)_SHARED_LIBRARIES)
-$(LOCAL_INSTALLED_MODULE) : | $(addprefix $(my_shared_library_path)/, $(my_jni_filenames))
+# Do not use order-only dependency, because we want to rebuild the image if an jni is updated.
+$(LOCAL_INSTALLED_MODULE) : $(addprefix $(my_shared_library_path)/, $(my_jni_filenames))
 
 # Create symlink in the app specific lib path
 ifdef LOCAL_POST_INSTALL_CMD
@@ -76,25 +77,10 @@ endif  # $(my_jni_shared_libraries) not empty
 endif  # my_embed_jni
 
 ifdef my_prebuilt_jni_libs
-# Install prebuilt JNI libs to the app specific lib path.
-# Files like @path/to/libfoo.so (path inside the apk) are JNI libs extracted from the prebuilt apk;
+# Files like @lib/<abi>/libfoo.so (path inside the apk) are JNI libs embedded prebuilt apk;
 # Files like path/to/libfoo.so (path relative to LOCAL_PATH) are prebuilts in the source tree.
-my_extracted_jni_libs := $(patsubst @%,%, \
+my_embedded_prebuilt_jni_libs := $(patsubst @%,%, \
     $(filter @%, $(my_prebuilt_jni_libs)))
-ifdef my_extracted_jni_libs
-ifndef my_prebuilt_src_file
-$(error No prebuilt apk to extract prebuilt jni libraries $(my_extracted_jni_libs))
-endif
-# We use the first jni lib file as dependency.
-my_installed_prebuilt_jni := $(my_app_lib_path)/$(notdir $(firstword $(my_extracted_jni_libs)))
-$(my_installed_prebuilt_jni): PRIVATE_JNI_LIBS := $(my_extracted_jni_libs)
-$(my_installed_prebuilt_jni): $(my_prebuilt_src_file)
-	@echo "Extract JNI libs ($@ <- $<)"
-	@mkdir -p $(dir $@)
-	$(hide) unzip -j -o -d $(dir $@) $< $(PRIVATE_JNI_LIBS) && touch $@
-
-$(LOCAL_INSTALLED_MODULE) : | $(my_installed_prebuilt_jni)
-endif
 
 # prebuilt JNI exsiting as separate source files.
 my_prebuilt_jni_libs := $(addprefix $(LOCAL_PATH)/, \
@@ -108,7 +94,7 @@ else # not my_embed_jni
 $(foreach lib, $(my_prebuilt_jni_libs), \
     $(eval $(call copy-one-file, $(lib), $(my_app_lib_path)/$(notdir $(lib)))))
 
-$(LOCAL_INSTALLED_MODULE) : | $(addprefix $(my_app_lib_path)/, $(notdir $(my_prebuilt_jni_libs)))
+$(LOCAL_INSTALLED_MODULE) : $(addprefix $(my_app_lib_path)/, $(notdir $(my_prebuilt_jni_libs)))
 endif  # my_embed_jni
 endif  # inner my_prebuilt_jni_libs
 endif  # outer my_prebuilt_jni_libs

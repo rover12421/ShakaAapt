@@ -30,14 +30,17 @@ namespace android {
 
 class Sensor;
 class ISensorEventConnection;
+class String8;
 
 class ISensorServer : public IInterface
 {
 public:
     DECLARE_META_INTERFACE(SensorServer);
 
-    virtual Vector<Sensor> getSensorList() = 0;
-    virtual sp<ISensorEventConnection> createSensorEventConnection() = 0;
+    virtual Vector<Sensor> getSensorList(const String16& opPackageName) = 0;
+    virtual sp<ISensorEventConnection> createSensorEventConnection(const String8& packageName,
+             int mode, const String16& opPackageName) = 0;
+    virtual int32_t isDataInjectionEnabled() = 0;
 };
 
 // ----------------------------------------------------------------------------

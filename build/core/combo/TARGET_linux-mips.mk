@@ -20,8 +20,7 @@
 # You can set TARGET_ARCH_VARIANT to use an arch version other
 # than mips32r2-fp. Each value should correspond to a file named
 # $(BUILD_COMBOS)/arch/<name>.mk which must contain
-# makefile variable definitions similar to the preprocessor
-# defines in build/core/combo/include/arch/<combo>/AndroidConfig.h. Their
+# makefile variable definitions. Their
 # purpose is to allow module Android.mk files to selectively compile
 # different versions of code based upon the funtionality and
 # instructions available in a given architecture version.
@@ -64,6 +63,11 @@ $(combo_2nd_arch_prefix)TARGET_OBJCOPY := $($(combo_2nd_arch_prefix)TARGET_TOOLS
 $(combo_2nd_arch_prefix)TARGET_LD := $($(combo_2nd_arch_prefix)TARGET_TOOLS_PREFIX)ld
 $(combo_2nd_arch_prefix)TARGET_READELF := $($(combo_2nd_arch_prefix)TARGET_TOOLS_PREFIX)readelf
 $(combo_2nd_arch_prefix)TARGET_STRIP := $($(combo_2nd_arch_prefix)TARGET_TOOLS_PREFIX)strip
+$(combo_2nd_arch_prefix)TARGET_NM := $($(combo_2nd_arch_prefix)TARGET_TOOLS_PREFIX)nm
+
+define $(combo_var_prefix)transform-shared-lib-to-toc
+$(call _gen_toc_command_for_elf,$(1),$(2))
+endef
 
 $(combo_2nd_arch_prefix)TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
@@ -79,8 +83,6 @@ ifeq ($(FORCE_MIPS_DEBUGGING),true)
   TARGET_mips_CFLAGS += -fno-omit-frame-pointer
 endif
 
-android_config_h := $(call select-android-config-h,linux-mips)
-
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS += \
 			$(TARGET_mips_CFLAGS) \
 			-U__unix -U__unix__ -Umips \
@@ -93,8 +95,6 @@ $(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS += \
 			-no-canonical-prefixes \
 			-fno-canonical-system-headers \
 			$(arch_variant_cflags) \
-			-include $(android_config_h) \
-			-I $(dir $(android_config_h))
 
 ifneq ($(ARCH_MIPS_PAGE_SHIFT),)
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS += -DPAGE_SHIFT=$(ARCH_MIPS_PAGE_SHIFT)
@@ -145,6 +145,7 @@ $(combo_2nd_arch_prefix)TARGET_LIBGCOV := $(shell $($(combo_2nd_arch_prefix)TARG
 endif
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
+KERNEL_HEADERS_COMMON += $(libc_root)/kernel/common
 KERNEL_HEADERS_ARCH   := $(libc_root)/kernel/uapi/asm-mips # mips covers both mips and mips64.
 KERNEL_HEADERS := $(KERNEL_HEADERS_COMMON) $(KERNEL_HEADERS_ARCH)
 

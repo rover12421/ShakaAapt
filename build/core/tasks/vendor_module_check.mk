@@ -22,8 +22,10 @@ _vendor_owner_whitelist := \
         broadcom \
         csr \
         elan \
+        fpc \
         google \
         htc \
+        huawei \
         imgtec \
         invensense \
         intel \

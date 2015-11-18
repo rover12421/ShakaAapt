@@ -1,4 +1,6 @@
-#TODO: add build instructions once aarch64 NDK is ready
+The Android platform gdb is built as part of the NDK build, from sources at https://android.googlesource.com/toolchain/gdb/.
 
-Current prebuilt version is against AOSP-toolchain/gdb/gdb-7.6
-commit 058cd7044df46289eee21b33913e2b08dbda6416
+To build it, follow the steps at https://android.googlesource.com/platform/ndk/+/master/README.md, and run `python checkbuild.py --module gdbserver`.
+
+The current prebuilt version is built from the sources described by the manifest xml file in this directory.
+

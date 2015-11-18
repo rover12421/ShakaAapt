@@ -28,7 +28,9 @@ class RangeSet(object):
     if isinstance(data, str):
       self._parse_internal(data)
     elif data:
+      assert len(data) % 2 == 0
       self.data = tuple(self._remove_pairs(data))
+      self.monotonic = all(x < y for x, y in zip(self.data, self.data[1:]))
     else:
       self.data = ()
 
@@ -38,8 +40,10 @@ class RangeSet(object):
 
   def __eq__(self, other):
     return self.data == other.data
+
   def __ne__(self, other):
     return self.data != other.data
+
   def __nonzero__(self):
     return bool(self.data)
 
@@ -73,9 +77,9 @@ class RangeSet(object):
     monotonic = True
     for p in text.split():
       if "-" in p:
-        s, e = p.split("-")
-        data.append(int(s))
-        data.append(int(e)+1)
+        s, e = (int(x) for x in p.split("-"))
+        data.append(s)
+        data.append(e+1)
         if last <= s <= e:
           last = e
         else:
@@ -94,6 +98,9 @@ class RangeSet(object):
 
   @staticmethod
   def _remove_pairs(source):
+    """Remove consecutive duplicate items to simplify the result.
+
+    [1, 2, 2, 5, 5, 10] will become [1, 10]."""
     last = None
     for i in source:
       if i == last:
@@ -116,6 +123,7 @@ class RangeSet(object):
     return " ".join(out)
 
   def to_string_raw(self):
+    assert self.data
     return str(len(self.data)) + "," + ",".join(str(i) for i in self.data)
 
   def union(self, other):
@@ -259,6 +267,38 @@ class RangeSet(object):
       e1 = e + n
       out = out.union(RangeSet(str(s1) + "-" + str(e1-1)))
     return out
+
+  def first(self, n):
+    """Return the RangeSet that contains at most the first 'n' integers.
+
+    >>> RangeSet("0-9").first(1)
+    <RangeSet("0")>
+    >>> RangeSet("10-19").first(5)
+    <RangeSet("10-14")>
+    >>> RangeSet("10-19").first(15)
+    <RangeSet("10-19")>
+    >>> RangeSet("10-19 30-39").first(3)
+    <RangeSet("10-12")>
+    >>> RangeSet("10-19 30-39").first(15)
+    <RangeSet("10-19 30-34")>
+    >>> RangeSet("10-19 30-39").first(30)
+    <RangeSet("10-19 30-39")>
+    >>> RangeSet("0-9").first(0)
+    <RangeSet("")>
+    """
+
+    if self.size() <= n:
+      return self
+
+    out = []
+    for s, e in self:
+      if e - s >= n:
+        out += (s, s+n)
+        break
+      else:
+        out += (s, e)
+        n -= e - s
+    return RangeSet(data=out)
 
 
 if __name__ == "__main__":

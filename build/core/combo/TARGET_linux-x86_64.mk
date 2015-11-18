@@ -56,6 +56,11 @@ TARGET_OBJCOPY := $(TARGET_TOOLS_PREFIX)objcopy
 TARGET_LD := $(TARGET_TOOLS_PREFIX)ld
 TARGET_READELF := $(TARGET_TOOLS_PREFIX)readelf
 TARGET_STRIP := $(TARGET_TOOLS_PREFIX)strip
+TARGET_NM := $(TARGET_TOOLS_PREFIX)nm
+
+define $(combo_var_prefix)transform-shared-lib-to-toc
+$(call _gen_toc_command_for_elf,$(1),$(2))
+endef
 
 ifneq ($(wildcard $(TARGET_CC)),)
 TARGET_LIBGCC := \
@@ -72,6 +77,7 @@ libc_root := bionic/libc
 libm_root := bionic/libm
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
+KERNEL_HEADERS_COMMON += $(libc_root)/kernel/common
 KERNEL_HEADERS_ARCH   := $(libc_root)/kernel/uapi/asm-x86 # x86 covers both x86 and x86_64.
 KERNEL_HEADERS := $(KERNEL_HEADERS_COMMON) $(KERNEL_HEADERS_ARCH)
 
@@ -98,10 +104,6 @@ TARGET_GLOBAL_CFLAGS += \
     -Werror=pointer-to-int-cast \
     -Werror=int-to-pointer-cast \
     -Werror=implicit-function-declaration \
-
-android_config_h := $(call select-android-config-h,target_linux-x86)
-TARGET_ANDROID_CONFIG_CFLAGS := -include $(android_config_h) -I $(dir $(android_config_h))
-TARGET_GLOBAL_CFLAGS += $(TARGET_ANDROID_CONFIG_CFLAGS)
 
 TARGET_GLOBAL_CFLAGS += $(arch_variant_cflags)
 

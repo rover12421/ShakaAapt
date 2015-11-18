@@ -48,6 +48,10 @@ ifeq (SHARED_LIBRARIES,$(LOCAL_MODULE_CLASS))
     # Do not pack relocations by default
     LOCAL_PACK_MODULE_RELOCATIONS := false
   endif
+
+  ifeq ($(DISABLE_RELOCATION_PACKER),true)
+    LOCAL_PACK_MODULE_RELOCATIONS := false
+  endif
 endif
 
 ifneq ($(filter STATIC_LIBRARIES SHARED_LIBRARIES,$(LOCAL_MODULE_CLASS)),)
@@ -88,7 +92,7 @@ else  # LOCAL_STRIP_MODULE and LOCAL_PACK_MODULE_RELOCATIONS not true
 ifdef prebuilt_module_is_a_library
 export_includes := $(intermediates)/export_includes
 $(export_includes): PRIVATE_EXPORT_C_INCLUDE_DIRS := $(LOCAL_EXPORT_C_INCLUDE_DIRS)
-$(export_includes) : $(LOCAL_MODULE_MAKEFILE)
+$(export_includes) : $(LOCAL_MODULE_MAKEFILE_DEP)
 	@echo Export includes file: $< -- $@
 	$(hide) mkdir -p $(dir $@) && rm -f $@
 ifdef LOCAL_EXPORT_C_INCLUDE_DIRS
@@ -122,7 +126,7 @@ $(LOCAL_BUILT_MODULE) : $(my_built_shared_libraries)
 endif
 endif
 
-# We need to enclose the above export_includes and built_shared_libraries in
+# We need to enclose the above export_includes and my_built_shared_libraries in
 # "LOCAL_STRIP_MODULE not true" because otherwise the rules are defined in dynamic_binary.mk.
 endif  # LOCAL_STRIP_MODULE not true
 
@@ -195,23 +199,31 @@ endif
 include $(BUILD_SYSTEM)/dex_preopt_odex_install.mk
 #######################################
 # Sign and align non-presigned .apks.
-$(built_module) : PRIVATE_PAGE_ALIGN_JNI_SHARED_LIBRARIES := $(LOCAL_PAGE_ALIGN_JNI_SHARED_LIBRARIES)
+
+# The embedded prebuilt jni to uncompress.
+ifeq ($(LOCAL_CERTIFICATE),PRESIGNED)
+# For PRESIGNED apks we must uncompress every .so file:
+# even if the .so file isn't for the current TARGET_ARCH,
+# we can't strip the file.
+embedded_prebuilt_jni_libs := 'lib/*.so'
+endif
+ifndef embedded_prebuilt_jni_libs
+# No LOCAL_PREBUILT_JNI_LIBS, uncompress all.
+embedded_prebuilt_jni_libs := 'lib/*.so'
+endif
+$(built_module): PRIVATE_EMBEDDED_JNI_LIBS := $(embedded_prebuilt_jni_libs)
+
 $(built_module) : $(my_prebuilt_src_file) | $(ACP) $(ZIPALIGN) $(SIGNAPK_JAR)
 	$(transform-prebuilt-to-target)
+	$(uncompress-shared-libs)
 ifneq ($(LOCAL_CERTIFICATE),PRESIGNED)
 	@# Only strip out files if we can re-sign the package.
-ifdef extracted_jni_libs
-	$(hide) zip -d $@ 'lib/*.so'  # strip embedded JNI libraries.
-endif
 ifdef LOCAL_DEX_PREOPT
 ifneq (nostripping,$(LOCAL_DEX_PREOPT))
 	$(call dexpreopt-remove-classes.dex,$@)
 endif
 endif
 	$(sign-package)
-endif
-ifeq ($(LOCAL_PAGE_ALIGN_JNI_SHARED_LIBRARIES),true)
-	$(uncompress-shared-libs)
 endif
 	$(align-package)
 
@@ -304,12 +316,12 @@ endif # TARGET JAVA_LIBRARIES
 
 ifeq ($(LOCAL_MODULE_CLASS),JAVA_LIBRARIES)
 $(intermediates.COMMON)/classes.jack : PRIVATE_JILL_FLAGS:=$(LOCAL_JILL_FLAGS)
-$(intermediates.COMMON)/classes.jack : $(my_prebuilt_src_file) $(LOCAL_MODULE_MAKEFILE) \
-        $(LOCAL_ADDITIONAL_DEPENDENCIES) $(JILL_JAR) $(JACK_JAR) $(JACK_LAUNCHER_JAR)
+$(intermediates.COMMON)/classes.jack : $(my_src_jar) $(LOCAL_MODULE_MAKEFILE_DEP) \
+        $(LOCAL_ADDITIONAL_DEPENDENCIES) $(JILL_JAR) $(JACK)
 	$(transform-jar-to-jack)
 
 endif # JAVA_LIBRARIES
 
-$(built_module) : $(LOCAL_MODULE_MAKEFILE) $(LOCAL_ADDITIONAL_DEPENDENCIES)
+$(built_module) : $(LOCAL_MODULE_MAKEFILE_DEP) $(LOCAL_ADDITIONAL_DEPENDENCIES)
 
 my_prebuilt_src_file :=

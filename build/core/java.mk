@@ -1,3 +1,4 @@
+# Target Java.
 # Requires:
 # LOCAL_MODULE_SUFFIX
 # LOCAL_MODULE_CLASS
@@ -7,7 +8,9 @@ ifeq ($(TARGET_BUILD_PDK),true)
 ifeq ($(TARGET_BUILD_PDK_JAVA_PLATFORM),)
 # LOCAL_SDK not defined or set to current
 ifeq ($(filter-out current,$(LOCAL_SDK_VERSION)),)
+ifneq ($(LOCAL_NO_STANDARD_LIBRARIES),true)
 LOCAL_SDK_VERSION := $(PDK_BUILD_SDK_VERSION)
+endif #!LOCAL_NO_STANDARD_LIBRARIES
 endif
 endif # !PDK_JAVA
 endif #PDK
@@ -146,18 +149,28 @@ renderscript_sources_fullpath := $(addprefix $(LOCAL_PATH)/, $(renderscript_sour
 RenderScript_file_stamp := $(LOCAL_INTERMEDIATE_SOURCE_DIR)/RenderScript.stamp
 renderscript_intermediate.COMMON := $(LOCAL_INTERMEDIATE_SOURCE_DIR)/renderscript
 
+# Defaulting to an empty string uses the latest available platform SDK.
 renderscript_target_api :=
 
 ifneq (,$(LOCAL_RENDERSCRIPT_TARGET_API))
-renderscript_target_api := $(LOCAL_RENDERSCRIPT_TARGET_API)
+  renderscript_target_api := $(LOCAL_RENDERSCRIPT_TARGET_API)
 else
-ifneq (,$(LOCAL_SDK_VERSION))
-# Set target-api for LOCAL_SDK_VERSIONs other than current.
-ifneq (,$(filter-out current system_current, $(LOCAL_SDK_VERSION)))
-renderscript_target_api := $(LOCAL_SDK_VERSION)
-endif
-endif  # LOCAL_SDK_VERSION is set
+  ifneq (,$(LOCAL_SDK_VERSION))
+    # Set target-api for LOCAL_SDK_VERSIONs other than current.
+    ifneq (,$(filter-out current system_current, $(LOCAL_SDK_VERSION)))
+      renderscript_target_api := $(LOCAL_SDK_VERSION)
+    endif
+  endif  # LOCAL_SDK_VERSION is set
 endif  # LOCAL_RENDERSCRIPT_TARGET_API is set
+
+# For 64-bit, we always have to upgrade to at least 21 for compat build.
+ifneq ($(LOCAL_RENDERSCRIPT_COMPATIBILITY),)
+  ifeq ($(TARGET_IS_64_BIT),true)
+    ifneq ($(filter $(RSCOMPAT_32BIT_ONLY_API_LEVELS),$(renderscript_target_api)),)
+      renderscript_target_api := 21
+    endif
+  endif
+endif
 
 ifeq ($(LOCAL_RENDERSCRIPT_CC),)
 LOCAL_RENDERSCRIPT_CC := $(LLVM_RS_CC)
@@ -265,26 +278,80 @@ LOCAL_INTERMEDIATE_TARGETS += $(RenderScript_file_stamp)
 LOCAL_RESOURCE_DIR := $(LOCAL_INTERMEDIATE_SOURCE_DIR)/renderscript/res $(LOCAL_RESOURCE_DIR)
 endif
 
+
+###########################################################
+## AIDL: Compile .aidl files to .java
+###########################################################
+aidl_sources := $(filter %.aidl,$(LOCAL_SRC_FILES))
+
+ifneq ($(strip $(aidl_sources)),)
+aidl_java_sources := $(patsubst %.aidl,%.java,$(addprefix $(intermediates.COMMON)/src/, $(aidl_sources)))
+aidl_sources := $(addprefix $(LOCAL_PATH)/, $(aidl_sources))
+
+aidl_preprocess_import :=
+ifdef LOCAL_SDK_VERSION
+ifneq ($(filter current system_current, $(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS)),)
+  # LOCAL_SDK_VERSION is current and no TARGET_BUILD_APPS
+  aidl_preprocess_import := $(TARGET_OUT_COMMON_INTERMEDIATES)/framework.aidl
+else
+  aidl_preprocess_import := $(HISTORICAL_SDK_VERSIONS_ROOT)/$(LOCAL_SDK_VERSION)/framework.aidl
+endif # not current or system_current
+else
+# build against the platform.
+LOCAL_AIDL_INCLUDES += $(FRAMEWORKS_BASE_JAVA_SRC_DIRS)
+endif # LOCAL_SDK_VERSION
+$(aidl_java_sources): PRIVATE_AIDL_FLAGS := -b $(addprefix -p,$(aidl_preprocess_import)) -I$(LOCAL_PATH) -I$(LOCAL_PATH)/src $(addprefix -I,$(LOCAL_AIDL_INCLUDES))
+
+$(aidl_java_sources): $(intermediates.COMMON)/src/%.java: \
+        $(LOCAL_PATH)/%.aidl \
+        $(LOCAL_MODULE_MAKEFILE_DEP) \
+        $(LOCAL_ADDITIONAL_DEPENDENCIES) \
+        $(AIDL) \
+        $(aidl_preprocess_import)
+	$(transform-aidl-to-java)
+-include $(aidl_java_sources:%.java=%.P)
+
+else
+aidl_java_sources :=
+endif
+
+##########################################
+
 # All of the rules after full_classes_compiled_jar are very unlikely
 # to fail except for bugs in their respective tools.  If you would
 # like to run these rules, add the "all" modifier goal to the make
 # command line.
+ifndef LOCAL_CHECKED_MODULE
 ifdef full_classes_jar
-java_alternative_checked_module := $(full_classes_compiled_jar)
-else
-java_alternative_checked_module :=
+LOCAL_CHECKED_MODULE := $(full_classes_compiled_jar)
 endif
-
-# TODO: It looks like the only thing we need from base_rules is
-# all_java_sources.  See if we can get that by adding a
-# common_java.mk, and moving the include of base_rules.mk to
-# after all the declarations.
+endif
 
 #######################################
 include $(BUILD_SYSTEM)/base_rules.mk
 #######################################
 
-java_alternative_checked_module :=
+###########################################################
+## logtags: emit java source
+###########################################################
+ifneq ($(strip $(logtags_sources)),)
+
+logtags_java_sources := $(patsubst %.logtags,%.java,$(addprefix $(intermediates.COMMON)/src/, $(logtags_sources)))
+logtags_sources := $(addprefix $(LOCAL_PATH)/, $(logtags_sources))
+
+$(logtags_java_sources): $(intermediates.COMMON)/src/%.java: $(LOCAL_PATH)/%.logtags $(TARGET_OUT_COMMON_INTERMEDIATES)/all-event-log-tags.txt
+	$(transform-logtags-to-java)
+
+else
+logtags_java_sources :=
+endif
+
+##########################################
+java_sources := $(addprefix $(LOCAL_PATH)/, $(filter %.java,$(LOCAL_SRC_FILES))) $(aidl_java_sources) $(logtags_java_sources) \
+                $(filter %.java,$(LOCAL_GENERATED_SOURCES))
+all_java_sources := $(java_sources) $(addprefix $(TARGET_OUT_COMMON_INTERMEDIATES)/, $(filter %.java,$(LOCAL_INTERMEDIATE_SOURCES)))
+
+include $(BUILD_SYSTEM)/java_common.mk
 
 #######################################
 # defines built_odex along with rule to install odex
@@ -297,38 +364,6 @@ ifndef need_compile_java
 $(error $(LOCAL_PATH): Target java module does not define any source or resource files)
 endif
 endif
-
-# Install the RS compatibility libraries to /system/lib/ if necessary
-ifdef rs_compatibility_jni_libs
-installed_rs_compatibility_jni_libs := $(addprefix $(TARGET_OUT_SHARED_LIBRARIES)/,\
-    $(notdir $(rs_compatibility_jni_libs)))
-# Provide a way to skip sources included in multiple projects.
-ifdef LOCAL_RENDERSCRIPT_SKIP_INSTALL
-skip_install_rs_libs := $(patsubst %.rs,%.so, \
-    $(addprefix $(TARGET_OUT_SHARED_LIBRARIES)/librs., \
-    $(notdir $(LOCAL_RENDERSCRIPT_SKIP_INSTALL))))
-installed_rs_compatibility_jni_libs := \
-    $(filter-out $(skip_install_rs_libs),$(installed_rs_compatibility_jni_libs))
-endif
-ifneq (,$(strip $(installed_rs_compatibility_jni_libs)))
-$(installed_rs_compatibility_jni_libs) : $(TARGET_OUT_SHARED_LIBRARIES)/lib%.so : \
-    $(renderscript_intermediate)/lib%.so
-	$(hide) mkdir -p $(dir $@) && cp -f $< $@
-
-# Install them only if the current module is installed.
-$(LOCAL_INSTALLED_MODULE) : $(installed_rs_compatibility_jni_libs)
-endif
-endif
-
-# We use intermediates.COMMON because the classes.jar/.dex files will be
-# common even if LOCAL_BUILT_MODULE isn't.
-#
-# Override some target variables that base_rules set up for us.
-$(LOCAL_INTERMEDIATE_TARGETS): \
-	PRIVATE_CLASS_INTERMEDIATES_DIR := $(intermediates.COMMON)/classes
-$(LOCAL_INTERMEDIATE_TARGETS): \
-	PRIVATE_SOURCE_INTERMEDIATES_DIR := $(LOCAL_INTERMEDIATE_SOURCE_DIR)
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_RMTYPEDEFS := $(LOCAL_RMTYPEDEFS)
 
 # Since we're using intermediates.COMMON, make sure that it gets cleaned
 # properly.
@@ -364,7 +399,7 @@ endif
 # This intentionally depends on java_sources, not all_java_sources.
 # Deps for generated source files must be handled separately,
 # via deps on the target that generates the sources.
-$(full_classes_compiled_jar): PRIVATE_JAVACFLAGS := $(LOCAL_JAVACFLAGS)
+$(full_classes_compiled_jar): PRIVATE_JAVACFLAGS := $(GLOBAL_JAVAC_DEBUG_FLAGS) $(LOCAL_JAVACFLAGS)
 $(full_classes_compiled_jar): PRIVATE_JAR_EXCLUDE_FILES := $(LOCAL_JAR_EXCLUDE_FILES)
 $(full_classes_compiled_jar): PRIVATE_JAR_PACKAGES := $(LOCAL_JAR_PACKAGES)
 $(full_classes_compiled_jar): PRIVATE_JAR_EXCLUDE_PACKAGES := $(LOCAL_JAR_EXCLUDE_PACKAGES)
@@ -377,11 +412,9 @@ $(full_classes_compiled_jar): \
         $(layers_file) \
         $(RenderScript_file_stamp) \
         $(proto_java_sources_file_stamp) \
-        $(LOCAL_MODULE_MAKEFILE) \
+        $(LOCAL_MODULE_MAKEFILE_DEP) \
         $(LOCAL_ADDITIONAL_DEPENDENCIES)
 	$(transform-java-to-classes.jar)
-
-$(full_classes_compiled_jar): PRIVATE_JAVAC_DEBUG_FLAGS := -g
 
 # Run jarjar if necessary, otherwise just copy the file.
 ifneq ($(strip $(LOCAL_JARJAR_RULES)),)
@@ -430,8 +463,29 @@ ifneq ($(filter-out full custom nosystem obfuscation optimization shrinktests,$(
     $(error invalid value for LOCAL_PROGUARD_ENABLED: $(LOCAL_PROGUARD_ENABLED))
 endif
 proguard_dictionary := $(intermediates.COMMON)/proguard_dictionary
+
+# Hack: see b/20667396
+# When an app's LOCAL_SDK_VERSION is lower than the support library's LOCAL_SDK_VERSION,
+# we artifically raises the "SDK version" "linked" by ProGuard, to
+# - suppress ProGuard warnings of referencing symbols unknown to the lower SDK version.
+# - prevent ProGuard stripping subclass in the support library that extends class added in the higher SDK version.
+my_support_library_sdk_raise :=
+ifneq (,$(filter android-support-%,$(LOCAL_STATIC_JAVA_LIBRARIES)))
+ifdef LOCAL_SDK_VERSION
+ifdef TARGET_BUILD_APPS
+ifeq (,$(filter current system_current, $(LOCAL_SDK_VERSION)))
+  my_support_library_sdk_raise := $(call java-lib-files, sdk_vcurrent)
+endif
+else
+  # For platform build, we can't just raise to the "current" SDK,
+  # that would break apps that use APIs removed from the current SDK.
+  my_support_library_sdk_raise := $(call java-lib-files,$(TARGET_DEFAULT_JAVA_LIBRARIES))
+endif
+endif
+endif
+
 # jack already has the libraries in its classpath and doesn't support jars
-legacy_proguard_flags := $(addprefix -libraryjars ,$(full_shared_java_libs))
+legacy_proguard_flags := $(addprefix -libraryjars ,$(my_support_library_sdk_raise) $(full_shared_java_libs))
 common_proguard_flags :=  \
                   -forceprocessing \
                   -printmapping $(proguard_dictionary)
@@ -499,7 +553,7 @@ extra_input_jar :=
 endif
 $(full_classes_proguard_jar): PRIVATE_EXTRA_INPUT_JAR := $(extra_input_jar)
 $(full_classes_proguard_jar): PRIVATE_PROGUARD_FLAGS := $(legacy_proguard_flags) $(common_proguard_flags) $(LOCAL_PROGUARD_FLAGS)
-$(full_classes_proguard_jar) : $(full_classes_jar) $(extra_input_jar) $(proguard_flag_files) | $(ACP) $(PROGUARD)
+$(full_classes_proguard_jar) : $(full_classes_jar) $(extra_input_jar) $(my_support_library_sdk_raise) $(proguard_flag_files) | $(ACP) $(PROGUARD)
 	$(call transform-jar-to-proguard)
 
 else  # LOCAL_PROGUARD_ENABLED not defined
@@ -574,8 +628,6 @@ $(LOCAL_INTERMEDIATE_TARGETS): \
 endif
 
 ifdef full_classes_jar
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JACK_DEBUG_FLAGS := -g
-
 ifdef LOCAL_PROGUARD_ENABLED
 
 ifndef LOCAL_JACK_PROGUARD_FLAGS
@@ -591,12 +643,13 @@ else  # LOCAL_PROGUARD_ENABLED not defined
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JACK_PROGUARD_FLAGS :=
 endif # LOCAL_PROGUARD_ENABLED defined
 
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JACK_FLAGS := $(LOCAL_JACK_FLAGS)
+$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JACK_FLAGS := $(GLOBAL_JAVAC_DEBUG_FLAGS) $(LOCAL_JACK_FLAGS)
+$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JACK_VERSION := $(LOCAL_JACK_VERSION)
 
 jack_all_deps := $(java_sources) $(java_resource_sources) $(full_jack_lib_deps) \
         $(jar_manifest_file) $(layers_file) $(RenderScript_file_stamp) $(proguard_flag_files) \
         $(proto_java_sources_file_stamp) $(LOCAL_ADDITIONAL_DEPENDENCIES) $(LOCAL_JARJAR_RULES) \
-        $(LOCAL_MODULE_MAKEFILE) $(JACK_JAR) $(JACK_LAUNCHER_JAR)
+        $(LOCAL_MODULE_MAKEFILE_DEP) $(JACK)
 
 ifeq ($(LOCAL_IS_STATIC_JAVA_LIBRARY),true)
 $(full_classes_jack): $(jack_all_deps)

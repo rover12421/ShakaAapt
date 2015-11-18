@@ -324,7 +324,7 @@
 
 /* Define if your assembler supports HLE prefixes. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_AS_IX86_HLE */
+#define HAVE_AS_IX86_HLE 1
 #endif
 
 
@@ -336,7 +336,7 @@
 
 /* Define if the assembler supports 'rep <insn>, lock <insn>'. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_AS_IX86_REP_LOCK_PREFIX */
+#define HAVE_AS_IX86_REP_LOCK_PREFIX 1
 #endif
 
 
@@ -1214,7 +1214,7 @@
 
 /* Define if your linker supports --build-id. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_LD_BUILDID */
+#define HAVE_LD_BUILDID 1
 #endif
 
 

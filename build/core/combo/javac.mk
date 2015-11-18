@@ -9,6 +9,11 @@
 #   COMMON_JAVAC -- Java compiler command with common arguments
 #
 
+ifndef ANDROID_COMPILE_WITH_JACK
+# Defines if compilation with jack is enabled by default.
+ANDROID_COMPILE_WITH_JACK := true
+endif
+
 common_jdk_flags := -source 1.7 -target 1.7 -Xmaxerrs 9999999
 
 # Use the indexer wrapper to index the codebase instead of the javac compiler
@@ -34,6 +39,8 @@ ifeq ($(CUSTOM_JAVA_COMPILER), eclipse)
         -maxProblems 9999999 -nowarn
     $(info CUSTOM_JAVA_COMPILER=eclipse)
 endif
+
+GLOBAL_JAVAC_DEBUG_FLAGS := -g
 
 HOST_JAVAC ?= $(COMMON_JAVAC)
 TARGET_JAVAC ?= $(COMMON_JAVAC)

@@ -22,20 +22,17 @@ LOCAL_STATIC_LIBRARIES := \
 	liblog \
 	libzopfli
 
-ifeq ($(HOST_OS),linux)
-LOCAL_LDLIBS += -lrt
-endif
+LOCAL_LDLIBS_linux += -lrt
 
-ifdef USE_MINGW
-LOCAL_STATIC_LIBRARIES += libz
-else
-LOCAL_LDLIBS += -lz
-endif
+LOCAL_STATIC_LIBRARIES_windows += libz
+LOCAL_LDLIBS_linux += -lz
+LOCAL_LDLIBS_darwin += -lz
 
 ifneq ($(strip $(BUILD_HOST_static)),)
 LOCAL_LDLIBS += -lpthread
 endif # BUILD_HOST_static
 
 LOCAL_MODULE := zipalign
+LOCAL_MODULE_HOST_OS := darwin linux windows
 
 include $(BUILD_HOST_EXECUTABLE)

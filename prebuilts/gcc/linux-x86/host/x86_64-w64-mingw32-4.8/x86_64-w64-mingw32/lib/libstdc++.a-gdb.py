@@ -19,8 +19,8 @@ import gdb
 import os
 import os.path
 
-pythondir = '/tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/share/gcc-4.8.3/python'
-libdir = '/tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/x86_64-w64-mingw32/lib/../lib'
+pythondir = '/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/share/gcc-4.8.3/python'
+libdir = '/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/x86_64-w64-mingw32/lib/../lib'
 
 # This file might be loaded when there is no current objfile.  This
 # can happen if the user loads it manually.  In this case we don't

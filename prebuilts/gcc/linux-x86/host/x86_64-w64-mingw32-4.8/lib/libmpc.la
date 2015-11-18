@@ -17,7 +17,7 @@ old_library='libmpc.a'
 inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' -L/tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib /tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib/libmpfr.la /tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib/libgmp.la -lm'
+dependency_libs=' -L/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib /tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib/libmpfr.la /tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib/libgmp.la -lm'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''
@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/tmp/build-mingw64-toolchain-digit/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib'
+libdir='/tmp/build-mingw64-toolchain-joshualang/install-x86_64-linux-gnu/x86_64-w64-mingw32/lib'
