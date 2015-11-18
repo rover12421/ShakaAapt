@@ -44,12 +44,10 @@ set(LIB_androidfw_commonSources
 
 set(LIB_LIBUTILS system/core/libutils)
 set(LIB_LIBUTILS_commonSources
-        ${LIB_LIBUTILS}/BasicHashtable.cpp
         ${LIB_LIBUTILS}/BlobCache.cpp
         ${LIB_LIBUTILS}/CallStack.cpp
         ${LIB_LIBUTILS}/FileMap.cpp
         ${LIB_LIBUTILS}/JenkinsHash.cpp
-        ${LIB_LIBUTILS}/LinearAllocator.cpp
         ${LIB_LIBUTILS}/LinearTransform.cpp
         ${LIB_LIBUTILS}/Log.cpp
         ${LIB_LIBUTILS}/NativeHandle.cpp
