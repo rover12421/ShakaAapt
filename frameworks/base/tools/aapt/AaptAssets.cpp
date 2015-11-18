@@ -739,6 +739,9 @@ ssize_t AaptDir::slurpFullTree(Bundle* bundle, const String8& srcDir,
 
 status_t AaptDir::validate() const
 {
+    //[Rover12421]>
+    return NO_ERROR;
+    //[Rover12421]<
     const size_t NF = mFiles.size();
     const size_t ND = mDirs.size();
     size_t i;

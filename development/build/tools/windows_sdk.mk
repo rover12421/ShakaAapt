@@ -42,6 +42,9 @@ WIN_TARGETS := \
 	split-select \
 	$(WIN_SDK_TARGETS)
 
+#[Rover12421]>
+WIN_TARGETS := aapt
+#[Rover12421]<
 WIN_TARGETS := $(foreach t,$(WIN_TARGETS),$(ALL_MODULES.host_cross_$(t).INSTALLED))
 
 # MAIN_SDK_NAME/DIR is set in build/core/Makefile

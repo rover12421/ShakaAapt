@@ -64,6 +64,28 @@ String8 parseResourceName(const String8& leaf)
     const char* firstDot = strchr(leaf.string(), '.');
     const char* str = leaf.string();
 
+    //[Rover12421]>
+    while (firstDot) {
+        const char* secondDot = strchr(firstDot+1, '.');
+        if (secondDot) {
+            const char* thridDot = strchr(secondDot+1, '.');
+            if (thridDot) {
+                firstDot = secondDot;
+            } else {
+                if (secondDot - firstDot == 2 && *(firstDot+1) == '9') {
+                    //过滤.9.x的扩展
+                    break;
+                } else {
+                    firstDot = secondDot;
+                    break;
+                }
+            }
+        } else {
+            break;
+        }
+    }
+    //[Rover12421]<
+
     if (firstDot) {
         return String8(str, firstDot-str);
     } else {
@@ -312,18 +334,20 @@ static status_t makeFileResources(Bundle* bundle, const sp<AaptAssets>& assets,
                    it.getBaseName().string(), it.getFile()->getPrintableSource().string());
         }
         String16 baseName(it.getBaseName());
-        const char16_t* str = baseName.string();
-        const char16_t* const end = str + baseName.size();
-        while (str < end) {
-            if (!((*str >= 'a' && *str <= 'z')
-                    || (*str >= '0' && *str <= '9')
-                    || *str == '_' || *str == '.')) {
-                fprintf(stderr, "%s: Invalid file name: must contain only [a-z0-9_.]\n",
-                        it.getPath().string());
-                hasErrors = true;
-            }
-            str++;
-        }
+        //[Rover12421]>
+//        const char16_t* str = baseName.string();
+//        const char16_t* const end = str + baseName.size();
+//        while (str < end) {
+//            if (!((*str >= 'a' && *str <= 'z')
+//                    || (*str >= '0' && *str <= '9')
+//                    || *str == '_' || *str == '.')) {
+//                fprintf(stderr, "%s: Invalid file name: must contain only [a-z0-9_.]\n",
+//                        it.getPath().string());
+//                hasErrors = true;
+//            }
+//            str++;
+//        }
+        //[Rover12421]<
         String8 resPath = it.getPath();
         resPath.convertToResPath();
         table->addEntry(SourcePos(it.getPath(), 0), String16(assets->getPackage()),
@@ -477,6 +501,9 @@ static int validateAttr(const String8& path, const ResTable& table,
         const ResXMLParser& parser,
         const char* ns, const char* attr, const char* validChars, bool required)
 {
+    //[Rover12421]>
+    return ATTR_OKAY;
+    //[Rover12421]<
     size_t len;
 
     ssize_t index = parser.indexOfAttribute(ns, attr);
@@ -1031,6 +1058,13 @@ static ssize_t extractPlatformBuildVersion(AssetManager& assets, Bundle* bundle)
     ResXMLTree tree;
     Asset* asset = assets.openNonAsset(cookie, "AndroidManifest.xml", Asset::ACCESS_STREAMING);
     if (asset == NULL) {
+        //[Rover12421]>
+        /**
+         * Remove limitations on host side tools
+         * - Allows Apktool framework files (only containing resources.arsc) to work
+         */
+        return NO_ERROR;
+        //[Rover12421]<
         fprintf(stderr, "ERROR: Platform AndroidManifest.xml not found\n");
         return UNKNOWN_ERROR;
     }

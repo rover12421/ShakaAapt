@@ -5065,6 +5065,16 @@ bool ResTable::stringToValue(Res_value* outValue, String16* outString,
                         outValue->data = rid;
                         return true;
                     }
+                    //[Rover12421]>
+                    if (packageId > 0) {
+                        /**
+                         * 只要packageId>0是正常的即可
+                         * 原罗辑packageId实际是package类型了.只有0x00(库),0x7f(app),0x01(系统)三种了
+                         */
+                        outValue->data = rid;
+                        return true;
+                    }
+                    //[Rover12421]<
                 }
             }
         }
