@@ -41,9 +41,6 @@ WIN_TARGETS := \
 	zipalign \
 	split-select \
 	$(WIN_SDK_TARGETS)
-#[Rover12421]>
-WIN_TARGETS := aapt
-#[Rover12421]<
 
 WIN_TARGETS := $(foreach t,$(WIN_TARGETS),$(ALL_MODULES.host_cross_$(t).INSTALLED))
 
