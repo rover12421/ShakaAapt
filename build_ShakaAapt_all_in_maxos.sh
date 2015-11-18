@@ -10,9 +10,11 @@ prebuilts/misc/darwin-x86/ccache/ccache -M 50G
 . build/envsetup.sh
 lunch sdk-eng
 
+rm -rf darwin-x86 darwin-x86_64
+
 # darwin-x86
 
-OUT_DIR=out-x86 make -B BUILD_NUMBER=$BUILD_NUMBER LOCAL_MULTILIB=32 aapt -j4
+OUT_DIR=out-x86 make -B BUILD_NUMBER=$BUILD_NUMBER LOCAL_MULTILIB=32 USE_NINJA=false aapt -j4
 mkdir -p "$BinDir/darwin-x86/bin"
 cp out-x86/host/darwin-x86/bin/aapt "$BinDir/darwin-x86/bin/aapt"
 
@@ -21,7 +23,7 @@ cp out-x86/host/darwin-x86/bin/aapt "$BinDir/darwin-x86/bin/aapt"
 
 # darwin-x86_64
 
-OUT_DIR=out-x86_64 make -B BUILD_NUMBER=$BUILD_NUMBER LOCAL_MULTILIB=64 aapt -j4
+OUT_DIR=out-x86_64 make -B BUILD_NUMBER=$BUILD_NUMBER LOCAL_MULTILIB=64 USE_NINJA=false aapt -j4
 mkdir -p "$BinDir/darwin-x86_64/bin"
 cp out-x86_64/host/darwin-x86/bin/aapt "$BinDir/darwin-x86_64/bin/aapt"
 
