@@ -10,7 +10,7 @@ prebuilts/misc/darwin-x86/ccache/ccache -M 50G
 . build/envsetup.sh
 lunch sdk-eng
 
-rm -rf darwin-x86 darwin-x86_64
+rm -rf out-x86 out-x86_64
 
 # darwin-x86
 
