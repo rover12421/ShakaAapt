@@ -1362,6 +1362,13 @@ bail:
     if (write_ptr) {
         png_destroy_write_struct(&write_ptr, &write_info);
     }
+    //[Rover12421]>
+    if (error != NO_ERROR) {
+        fprintf(stdout, "WARIN: Failure processing PNG image %s\n",
+                file->getPrintableSource().string());
+    }
+    return NO_ERROR;
+    //[Rover12421]<
 
     if (error != NO_ERROR) {
         fprintf(stderr, "ERROR: Failure processing PNG image %s\n",
