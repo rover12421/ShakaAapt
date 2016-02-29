@@ -995,9 +995,6 @@ status_t XMLNode::parseValues(const sp<AaptAssets>& assets,
 status_t XMLNode::assignResourceIds(const sp<AaptAssets>& assets,
                                     const ResourceTable* table)
 {
-    //[Rover12421]> skip check `No resource identifier found`
-    return NO_ERROR;
-    //[Rover12421]<
     bool hasErrors = false;
 
     if (getType() == TYPE_ELEMENT) {
@@ -1032,6 +1029,11 @@ status_t XMLNode::assignResourceIds(const sp<AaptAssets>& assets,
                 }
                 setAttributeResID(i, res);
             } else {
+                //[Rover12421]> Modify error to info from `No resource identifier found`
+                printf("No resource identifier found for attribute '%s' in package '%s'\n",
+                       String8(e.name).string(), String8(pkg).string());
+                continue;
+                //[Rover12421]<
                 SourcePos(mFilename, getStartLineNumber()).error(
                         "No resource identifier found for attribute '%s' in package '%s'\n",
                         String8(e.name).string(), String8(pkg).string());
