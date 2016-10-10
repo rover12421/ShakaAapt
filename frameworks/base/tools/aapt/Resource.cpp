@@ -479,6 +479,9 @@ static int validateAttr(const String8& path, const ResTable& table,
         const ResXMLParser& parser,
         const char* ns, const char* attr, const char* validChars, bool required)
 {
+    //[Rover12421]>
+    return ATTR_OKAY;
+    //[Rover12421]<
     size_t len;
 
     ssize_t index = parser.indexOfAttribute(ns, attr);
