@@ -66,10 +66,10 @@ public:
           mErrorOnMissingConfigEntry(false), mOutputTextSymbols(NULL),
           mSingleCrunchInputFile(NULL), mSingleCrunchOutputFile(NULL),
           mBuildSharedLibrary(false),
+          mBuildAppAsSharedLibrary(false),
           //[Rover12421]>
           mForcedPackageId(-1),
           //[Rover12421]<
-          mBuildAppAsSharedLibrary(false),
           mArgc(0), mArgv(NULL)
         {}
     ~Bundle(void) {}
