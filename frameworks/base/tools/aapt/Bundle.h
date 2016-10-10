@@ -66,6 +66,9 @@ public:
           mErrorOnMissingConfigEntry(false), mOutputTextSymbols(NULL),
           mSingleCrunchInputFile(NULL), mSingleCrunchOutputFile(NULL),
           mBuildSharedLibrary(false),
+          //[Rover12421]>
+          mForcedPackageId(-1),
+          //[Rover12421]<
           mBuildAppAsSharedLibrary(false),
           mArgc(0), mArgv(NULL)
         {}
@@ -220,6 +223,11 @@ public:
     void setNoVersionVectors(bool val) { mNoVersionVectors = val; }
     bool getNoVersionVectors() const { return mNoVersionVectors; }
 
+    //[Rover12421]>
+    int getForcedPackageId() const { return mForcedPackageId; }
+    void setForcedPackageId(int val) { mForcedPackageId = val; }
+    //[Rover12421]<
+
     /*
      * Set and get the file specification.
      *
@@ -343,6 +351,10 @@ private:
     android::String8 mPlatformVersionCode;
     android::String8 mPlatformVersionName;
     android::String8 mPrivateSymbolsPackage;
+
+    //[Rover12421]>
+    int 	    mForcedPackageId;
+    //[Rover12421]<
 
     /* file specification */
     int         mArgc;

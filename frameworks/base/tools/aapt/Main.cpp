@@ -61,6 +61,9 @@ void usage(void)
         "        [-0 extension [-0 extension ...]] [-g tolerance] [-j jarfile] \\\n"
         "        [--debug-mode] [--min-sdk-version VAL] [--target-sdk-version VAL] \\\n"
         "        [--app-version VAL] [--app-version-name TEXT] [--custom-package VAL] \\\n"
+        //[Rover12421]>
+        "        [--forced-package-id VAL] \\\n"
+        //[Rover12421]<
         "        [--rename-manifest-package PACKAGE] \\\n"
         "        [--rename-instrumentation-target-package PACKAGE] \\\n"
         "        [--utf16] [--auto-add-overlay] \\\n"
@@ -144,6 +147,10 @@ void usage(void)
         "       higher, the default encoding for resources will be in UTF-8.\n"
         "   --target-sdk-version\n"
         "       inserts android:targetSdkVersion in to manifest.\n"
+        //[Rover12421]>
+        "   --forced-package-id\n"
+        "       forces value as package-id\n"
+        //[Rover12421]<
         "   --max-res-version\n"
         "       ignores versioned resource directories above the given value.\n"
         "   --values\n"
@@ -519,6 +526,17 @@ int main(int argc, char* const argv[])
             case '-':
                 if (strcmp(cp, "-debug-mode") == 0) {
                     bundle.setDebugMode(true);
+                //[Rover12421]>
+                } else if (strcmp(cp, "-forced-package-id") == 0) {
+                    argc--;
+                    argv++;
+                    if (!argc) {
+                        fprintf(stderr, "ERROR: No argument supplied for '--forced-package-id' option\n");
+                        wantUsage = true;
+                        goto bail;
+                    }
+                    bundle.setForcedPackageId(atoi(argv[0]));
+                //[Rover12421]
                 } else if (strcmp(cp, "-min-sdk-version") == 0) {
                     argc--;
                     argv++;
