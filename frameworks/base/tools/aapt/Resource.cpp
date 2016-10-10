@@ -312,18 +312,20 @@ static status_t makeFileResources(Bundle* bundle, const sp<AaptAssets>& assets,
                    it.getBaseName().string(), it.getFile()->getPrintableSource().string());
         }
         String16 baseName(it.getBaseName());
-        const char16_t* str = baseName.string();
-        const char16_t* const end = str + baseName.size();
-        while (str < end) {
-            if (!((*str >= 'a' && *str <= 'z')
-                    || (*str >= '0' && *str <= '9')
-                    || *str == '_' || *str == '.')) {
-                fprintf(stderr, "%s: Invalid file name: must contain only [a-z0-9_.]\n",
-                        it.getPath().string());
-                hasErrors = true;
-            }
-            str++;
-        }
+        //[Rover12421]>
+//        const char16_t* str = baseName.string();
+//        const char16_t* const end = str + baseName.size();
+//        while (str < end) {
+//            if (!((*str >= 'a' && *str <= 'z')
+//                    || (*str >= '0' && *str <= '9')
+//                    || *str == '_' || *str == '.')) {
+//                fprintf(stderr, "%s: Invalid file name: must contain only [a-z0-9_.]\n",
+//                        it.getPath().string());
+//                hasErrors = true;
+//            }
+//            str++;
+//        }
+        //[Rover12421]<
         String8 resPath = it.getPath();
         resPath.convertToResPath();
         table->addEntry(SourcePos(it.getPath(), 0), String16(assets->getPackage()),
