@@ -65,23 +65,22 @@ String8 parseResourceName(const String8& leaf)
     const char* str = leaf.string();
 
     //[Rover12421]>
-    while (firstDot) {
-        const char* secondDot = strchr(firstDot+1, '.');
-        if (secondDot) {
-            const char* thridDot = strchr(secondDot+1, '.');
-            if (thridDot) {
-                firstDot = secondDot;
-            } else {
-                if (secondDot - firstDot == 2 && *(firstDot+1) == '9') {
-                    //过滤.9.x的扩展
-                    break;
-                } else {
-                    firstDot = secondDot;
-                    break;
+    //最后一个.作为分割
+    firstDot = strrchr(str, '.');
+    if (firstDot) {
+        size_t len = strlen(str);
+        size_t extLen = strlen(firstDot);
+        if (len > extLen+2) {
+            const char* end9 = str + (len-(extLen+2));
+            if (end9[0] == '.' && end9[1] == '9') {
+                firstDot = end9;
+                if (len > extLen+4) {
+                    const char* endr = str + (len-(extLen+4));
+                    if (endr[0] == '.' && endr[1] == 'r') {
+                        firstDot = endr;
+                    }
                 }
             }
-        } else {
-            break;
         }
     }
     //[Rover12421]<
