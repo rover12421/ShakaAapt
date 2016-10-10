@@ -1623,6 +1623,9 @@ sp<AaptDir> AaptAssets::resDir(const String8& name) const
 bool
 valid_symbol_name(const String8& symbol)
 {
+    //[Rover12421]>
+    return true;
+    //[Rover12421]<
     static char const * const KEYWORDS[] = {
         "abstract", "assert", "boolean", "break",
         "byte", "case", "catch", "char", "class", "const", "continue",
