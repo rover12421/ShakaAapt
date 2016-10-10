@@ -488,6 +488,31 @@ bool parseUiModeType(const char* name, ResTable_config* out) {
               | ResTable_config::UI_MODE_TYPE_WATCH;
         return true;
     }
+    //[Rover12421]>
+    //port 549aeb943bb64c59a9b9f557e9166195bdda30d4 to lollipop
+    else if (strcmp(name, "smallui") == 0) {
+        if (out) out->uiMode =
+                         (out->uiMode&~ResTable_config::MASK_UI_MODE_TYPE)
+                         | 0xc;
+        return true;
+    } else if (strcmp(name, "mediumui") == 0) {
+        if (out) out->uiMode =
+                         (out->uiMode&~ResTable_config::MASK_UI_MODE_TYPE)
+                         | 0xd;
+        return true;
+    } else if (strcmp(name, "largeui") == 0) {
+        if (out) out->uiMode =
+                         (out->uiMode&~ResTable_config::MASK_UI_MODE_TYPE)
+                         | 0xe;
+        return true;
+    } else if (strcmp(name, "hugeui") == 0) {
+        if (out) out->uiMode = 0xf;
+        return true;
+    } else if (strcmp(name, "godzillaui") == 0) {
+        if (out) out->uiMode = 0xb;
+        return true;
+    }
+    //[Rover12421]<
 
     return false;
 }
