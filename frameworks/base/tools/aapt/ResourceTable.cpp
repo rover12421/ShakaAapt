@@ -4600,6 +4600,9 @@ bool ResourceTable::shouldGenerateVersionedResource(
  * attribute will be respected.
  */
 status_t ResourceTable::modifyForCompat(const Bundle* bundle) {
+    //[Rover12421]>
+    return NO_ERROR;
+    //[Rover12421]<
     const int minSdk = getMinSdkVersion(bundle);
     if (minSdk >= SDK_LOLLIPOP_MR1) {
         // Lollipop MR1 and up handles public attributes differently, no
@@ -4734,6 +4737,9 @@ status_t ResourceTable::modifyForCompat(const Bundle* bundle,
                                         const String16& resourceName,
                                         const sp<AaptFile>& target,
                                         const sp<XMLNode>& root) {
+    //[Rover12421]>
+    return NO_ERROR;
+    //[Rover12421]<
     const String16 vector16("vector");
     const String16 animatedVector16("animated-vector");
 
