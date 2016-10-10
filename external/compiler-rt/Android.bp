@@ -29,6 +29,26 @@ cc_library_static {
     srcs: ["lib/builtins/mulodi4.c"],
     sanitize: ["never"],
     stl: "none",
+
+    cflags: [
+        "-Wno-unused-parameter",
+        "-Werror",
+    ],
+
+    arch: {
+        mips: {
+            srcs: ["lib/builtins/clear_cache.c"],
+        },
+        mips64: {
+            srcs: ["lib/builtins/clear_cache.c"],
+        },
+    },
+
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 // Don't build compiler-rt without clang
@@ -193,6 +213,11 @@ cc_library {
         "lib/builtins/umodti3.c",
     ],
 
+    cflags: [
+        "-Wno-unused-parameter",
+        "-Werror",
+    ],
+
     arch: {
         arm: {
             cflags: ["-D__ARM_EABI__"],
@@ -263,7 +288,6 @@ cc_library {
         mips64: {
             cflags: [
                 "-DCRT_HAS_128BIT",
-                "-DCRT_LDBL_128BIT",
             ],
         },
         x86: {
@@ -340,27 +364,35 @@ cc_library {
             ldflags: ["-Wl,--exclude-libs,libunwind_llvm.a"],
         },
         android_arm64: {
-            static_libs: ["libunwindbacktrace"],
+            // b/26968262 liblzma needs to be after libunwindbacktrace
+            static_libs: ["libunwindbacktrace","liblzma"],
             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
         },
         android_mips: {
-            static_libs: ["libunwindbacktrace"],
+            // b/26968262 liblzma needs to be after libunwindbacktrace
+            static_libs: ["libunwindbacktrace","liblzma"],
             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
         },
         android_mips64: {
-            static_libs: ["libunwindbacktrace"],
+            // b/26968262 liblzma needs to be after libunwindbacktrace
+            static_libs: ["libunwindbacktrace","liblzma"],
             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
         },
         android_x86: {
-            static_libs: ["libunwindbacktrace"],
+            // b/26968262 liblzma needs to be after libunwindbacktrace
+            static_libs: ["libunwindbacktrace","liblzma"],
             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
         },
         android_x86_64: {
             srcs: ["lib/builtins/ppc/floatditf.c"],
-            static_libs: ["libunwindbacktrace"],
+            // b/26968262 liblzma needs to be after libunwindbacktrace
+            static_libs: ["libunwindbacktrace","liblzma"],
             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
         },
         linux: {
+            static_libs: ["libunwindbacktrace"],
+        },
+        windows: {
             static_libs: ["libunwindbacktrace"],
         },
     },
@@ -371,19 +403,6 @@ cc_library {
 
     sanitize: ["never"],
     stl: "none",
-}
-
-//=====================================================================
-// Host and device Static Library: libprofile_rt
-//=====================================================================
-
-cc_library_static {
-    name: "libprofile_rt",
-    host_supported: true,
-    clang: true,
-    sanitize: ["never"],
-    srcs: ["lib/profile/GCDAProfiling.c"],
-
 }
 
 // Build asan, lsan, etc.

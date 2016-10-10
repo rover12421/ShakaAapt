@@ -75,6 +75,39 @@ typedef enum OMX_VIDEO_VP8LEVELTYPE {
     OMX_VIDEO_VP8LevelMax = 0x7FFFFFFF
 } OMX_VIDEO_VP8LEVELTYPE;
 
+/** VP9 profiles */
+typedef enum OMX_VIDEO_VP9PROFILETYPE {
+    OMX_VIDEO_VP9Profile0       = 0x1,
+    OMX_VIDEO_VP9Profile1       = 0x2,
+    OMX_VIDEO_VP9Profile2       = 0x4,
+    OMX_VIDEO_VP9Profile3       = 0x8,
+    // HDR profiles also support passing HDR metadata
+    OMX_VIDEO_VP9Profile2HDR    = 0x1000,
+    OMX_VIDEO_VP9Profile3HDR    = 0x2000,
+    OMX_VIDEO_VP9ProfileUnknown = 0x6EFFFFFF,
+    OMX_VIDEO_VP9ProfileMax     = 0x7FFFFFFF
+} OMX_VIDEO_VP9PROFILETYPE;
+
+/** VP9 levels */
+typedef enum OMX_VIDEO_VP9LEVELTYPE {
+    OMX_VIDEO_VP9Level1       = 0x1,
+    OMX_VIDEO_VP9Level11      = 0x2,
+    OMX_VIDEO_VP9Level2       = 0x4,
+    OMX_VIDEO_VP9Level21      = 0x8,
+    OMX_VIDEO_VP9Level3       = 0x10,
+    OMX_VIDEO_VP9Level31      = 0x20,
+    OMX_VIDEO_VP9Level4       = 0x40,
+    OMX_VIDEO_VP9Level41      = 0x80,
+    OMX_VIDEO_VP9Level5       = 0x100,
+    OMX_VIDEO_VP9Level51      = 0x200,
+    OMX_VIDEO_VP9Level52      = 0x400,
+    OMX_VIDEO_VP9Level6       = 0x800,
+    OMX_VIDEO_VP9Level61      = 0x1000,
+    OMX_VIDEO_VP9Level62      = 0x2000,
+    OMX_VIDEO_VP9LevelUnknown = 0x6EFFFFFF,
+    OMX_VIDEO_VP9LevelMax     = 0x7FFFFFFF
+} OMX_VIDEO_VP9LEVELTYPE;
+
 /** VP8 Param */
 typedef struct OMX_VIDEO_PARAM_VP8TYPE {
     OMX_U32 nSize;
@@ -147,10 +180,12 @@ typedef struct OMX_VIDEO_PARAM_ANDROID_VP8ENCODERTYPE {
 
 /** HEVC Profile enum type */
 typedef enum OMX_VIDEO_HEVCPROFILETYPE {
-    OMX_VIDEO_HEVCProfileUnknown = 0x0,
-    OMX_VIDEO_HEVCProfileMain    = 0x1,
-    OMX_VIDEO_HEVCProfileMain10  = 0x2,
-    OMX_VIDEO_HEVCProfileMax     = 0x7FFFFFFF
+    OMX_VIDEO_HEVCProfileUnknown      = 0x0,
+    OMX_VIDEO_HEVCProfileMain         = 0x1,
+    OMX_VIDEO_HEVCProfileMain10       = 0x2,
+    // Main10 profile with HDR SEI support.
+    OMX_VIDEO_HEVCProfileMain10HDR10  = 0x1000,
+    OMX_VIDEO_HEVCProfileMax          = 0x7FFFFFFF
 } OMX_VIDEO_HEVCPROFILETYPE;
 
 /** HEVC Level enum type */
@@ -185,13 +220,14 @@ typedef enum OMX_VIDEO_HEVCLEVELTYPE {
     OMX_VIDEO_HEVCHighTiermax     = 0x7FFFFFFF
 } OMX_VIDEO_HEVCLEVELTYPE;
 
-/** Structure for controlling HEVC video encoding and decoding */
+/** Structure for controlling HEVC video encoding */
 typedef struct OMX_VIDEO_PARAM_HEVCTYPE {
     OMX_U32 nSize;
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_VIDEO_HEVCPROFILETYPE eProfile;
     OMX_VIDEO_HEVCLEVELTYPE eLevel;
+    OMX_U32 nKeyFrameInterval;
 } OMX_VIDEO_PARAM_HEVCTYPE;
 
 /** Structure to define if dependent slice segments should be used */
@@ -203,11 +239,63 @@ typedef struct OMX_VIDEO_SLICESEGMENTSTYPE {
     OMX_BOOL bEnableLoopFilterAcrossSlices;
 } OMX_VIDEO_SLICESEGMENTSTYPE;
 
-/** Structure to return timestamps of rendered output frames for tunneled components */
+/** Structure to return timestamps of rendered output frames as well as EOS
+ *  for tunneled components.
+ */
 typedef struct OMX_VIDEO_RENDEREVENTTYPE {
     OMX_S64 nMediaTimeUs;  // timestamp of rendered video frame
     OMX_S64 nSystemTimeNs; // system monotonic time at the time frame was rendered
+                           // Use INT64_MAX for nMediaTimeUs to signal that the EOS
+                           // has been reached. In this case, nSystemTimeNs MUST be
+                           // the system time when the last frame was rendered.
+                           // This MUST be done in addition to returning (and
+                           // following) the render information for the last frame.
 } OMX_VIDEO_RENDEREVENTTYPE;
+
+/** Dolby Vision Profile enum type */
+typedef enum OMX_VIDEO_DOLBYVISIONPROFILETYPE {
+    OMX_VIDEO_DolbyVisionProfileUnknown = 0x0,
+    OMX_VIDEO_DolbyVisionProfileDvavPer = 0x1,
+    OMX_VIDEO_DolbyVisionProfileDvavPen = 0x2,
+    OMX_VIDEO_DolbyVisionProfileDvheDer = 0x4,
+    OMX_VIDEO_DolbyVisionProfileDvheDen = 0x8,
+    OMX_VIDEO_DolbyVisionProfileDvheDtr = 0x10,
+    OMX_VIDEO_DolbyVisionProfileDvheStn = 0x20,
+    OMX_VIDEO_DolbyVisionProfileDvheDth = 0x40,
+    OMX_VIDEO_DolbyVisionProfileDvheDtb = 0x80,
+    OMX_VIDEO_DolbyVisionProfileMax     = 0x7FFFFFFF
+} OMX_VIDEO_DOLBYVISIONPROFILETYPE;
+
+/** Dolby Vision Level enum type */
+typedef enum OMX_VIDEO_DOLBYVISIONLEVELTYPE {
+    OMX_VIDEO_DolbyVisionLevelUnknown = 0x0,
+    OMX_VIDEO_DolbyVisionLevelHd24    = 0x1,
+    OMX_VIDEO_DolbyVisionLevelHd30    = 0x2,
+    OMX_VIDEO_DolbyVisionLevelFhd24   = 0x4,
+    OMX_VIDEO_DolbyVisionLevelFhd30   = 0x8,
+    OMX_VIDEO_DolbyVisionLevelFhd60   = 0x10,
+    OMX_VIDEO_DolbyVisionLevelUhd24   = 0x20,
+    OMX_VIDEO_DolbyVisionLevelUhd30   = 0x40,
+    OMX_VIDEO_DolbyVisionLevelUhd48   = 0x80,
+    OMX_VIDEO_DolbyVisionLevelUhd60   = 0x100,
+    OMX_VIDEO_DolbyVisionLevelmax     = 0x7FFFFFFF
+} OMX_VIDEO_DOLBYVISIONLEVELTYPE;
+
+/**
+ * Structure for configuring video compression intra refresh period
+ *
+ * STRUCT MEMBERS:
+ *  nSize               : Size of the structure in bytes
+ *  nVersion            : OMX specification version information
+ *  nPortIndex          : Port that this structure applies to
+ *  nRefreshPeriod      : Intra refreh period in frames. Value 0 means disable intra refresh
+*/
+typedef struct OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nRefreshPeriod;
+} OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE;
 
 #ifdef __cplusplus
 }

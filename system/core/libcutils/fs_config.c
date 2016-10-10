@@ -79,6 +79,7 @@ static const struct fs_path_config android_dirs[] = {
     { 00500, AID_ROOT,   AID_ROOT,   0, "config" },
     { 00771, AID_SYSTEM, AID_SYSTEM, 0, "data/app" },
     { 00771, AID_SYSTEM, AID_SYSTEM, 0, "data/app-private" },
+    { 00771, AID_SYSTEM, AID_SYSTEM, 0, "data/app-ephemeral" },
     { 00771, AID_ROOT,   AID_ROOT,   0, "data/dalvik-cache" },
     { 00771, AID_SYSTEM, AID_SYSTEM, 0, "data/data" },
     { 00771, AID_SHELL,  AID_SHELL,  0, "data/local/tmp" },
@@ -117,7 +118,6 @@ static const struct fs_path_config android_files[] = {
     { 00440, AID_ROOT,      AID_SHELL,     0, "system/etc/init.goldfish.rc" },
     { 00550, AID_ROOT,      AID_SHELL,     0, "system/etc/init.goldfish.sh" },
     { 00550, AID_ROOT,      AID_SHELL,     0, "system/etc/init.ril" },
-    { 00550, AID_DHCP,      AID_SHELL,     0, "system/etc/dhcpcd/dhcpcd-run-hooks" },
     { 00555, AID_ROOT,      AID_ROOT,      0, "system/etc/ppp/*" },
     { 00555, AID_ROOT,      AID_ROOT,      0, "system/etc/rc.*" },
     { 00440, AID_ROOT,      AID_ROOT,      0, "system/etc/recovery.img" },
@@ -126,18 +126,17 @@ static const struct fs_path_config android_files[] = {
     { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app/*" },
     { 00644, AID_MEDIA_RW,  AID_MEDIA_RW,  0, "data/media/*" },
     { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app-private/*" },
+    { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app-ephemeral/*" },
     { 00644, AID_APP,       AID_APP,       0, "data/data/*" },
     { 00640, AID_ROOT,      AID_SHELL,     0, "data/nativetest/tests.txt" },
     { 00640, AID_ROOT,      AID_SHELL,     0, "data/nativetest64/tests.txt" },
     { 00750, AID_ROOT,      AID_SHELL,     0, "data/nativetest/*" },
     { 00750, AID_ROOT,      AID_SHELL,     0, "data/nativetest64/*" },
 
-    /* the following four files are INTENTIONALLY set-uid, but they
+    /* the following two files are INTENTIONALLY set-uid, but they
      * are NOT included on user builds. */
     { 04750, AID_ROOT,      AID_SHELL,     0, "system/xbin/su" },
-    { 06755, AID_ROOT,      AID_ROOT,      0, "system/xbin/librank" },
     { 06755, AID_ROOT,      AID_ROOT,      0, "system/xbin/procmem" },
-    { 04770, AID_ROOT,      AID_RADIO,     0, "system/bin/pppd-ril" },
 
     /* the following files have enhanced capabilities and ARE included in user builds. */
     { 00750, AID_ROOT,      AID_SHELL,     CAP_MASK_LONG(CAP_SETUID) | CAP_MASK_LONG(CAP_SETGID), "system/bin/run-as" },
@@ -150,7 +149,9 @@ static const struct fs_path_config android_files[] = {
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/lib64/valgrind/*" },
     { 00755, AID_ROOT,      AID_SHELL,     0, "system/xbin/*" },
     { 00755, AID_ROOT,      AID_SHELL,     0, "system/vendor/bin/*" },
+    { 00755, AID_ROOT,      AID_SHELL,     0, "system/vendor/xbin/*" },
     { 00755, AID_ROOT,      AID_SHELL,     0, "vendor/bin/*" },
+    { 00755, AID_ROOT,      AID_SHELL,     0, "vendor/xbin/*" },
     { 00750, AID_ROOT,      AID_SHELL,     0, "sbin/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "bin/*" },
     { 00750, AID_ROOT,      AID_SHELL,     0, "init*" },

@@ -32,6 +32,8 @@ LOCAL_LDFLAGS_arm := -Wl,--hash-style=both
 LOCAL_SRC_FILES := $(zlib_files)
 ifneq ($(TARGET_BUILD_APPS),)
   LOCAL_SDK_VERSION := 9
+else
+  LOCAL_CXX_STL := none
 endif
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 include $(BUILD_SHARED_LIBRARY)
@@ -45,6 +47,8 @@ LOCAL_CFLAGS += -O3 -DUSE_MMAP
 LOCAL_SRC_FILES := $(zlib_files)
 ifneq ($(TARGET_BUILD_APPS),)
   LOCAL_SDK_VERSION := 9
+else
+  LOCAL_CXX_STL := none
 endif
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 include $(BUILD_STATIC_LIBRARY)
@@ -58,6 +62,7 @@ LOCAL_SRC_FILES := $(zlib_files)
 LOCAL_MULTILIB := both
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 LOCAL_MODULE_HOST_OS := darwin linux windows
+LOCAL_CXX_STL := none
 include $(BUILD_HOST_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -68,6 +73,7 @@ LOCAL_CFLAGS += -O3 -DUSE_MMAP
 LOCAL_SRC_FILES := $(zlib_files)
 LOCAL_MULTILIB := both
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
+LOCAL_CXX_STL := none
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -79,6 +85,8 @@ LOCAL_MODULE:= gzip
 
 LOCAL_SHARED_LIBRARIES := libz
 
+LOCAL_CXX_STL := none
+
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -89,5 +97,7 @@ LOCAL_SRC_FILES:=        \
 LOCAL_MODULE:= minigzip
 
 LOCAL_STATIC_LIBRARIES := libz
+
+LOCAL_CXX_STL := none
 
 include $(BUILD_HOST_EXECUTABLE)

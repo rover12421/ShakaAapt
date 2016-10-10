@@ -81,6 +81,14 @@
 #define AID_SHARED_RELRO  1037  /* creator of shared GNU RELRO files */
 #define AID_DBUS          1038  /* dbus-daemon IPC broker process */
 #define AID_TLSDATE       1039  /* tlsdate unprivileged user */
+#define AID_MEDIA_EX      1040  /* mediaextractor process */
+#define AID_AUDIOSERVER   1041  /* audioserver process */
+#define AID_METRICS_COLL  1042  /* metrics_collector process */
+#define AID_METRICSD      1043  /* metricsd process */
+#define AID_WEBSERV       1044  /* webservd process */
+#define AID_DEBUGGERD     1045  /* debuggerd unprivileged user */
+#define AID_MEDIA_CODEC   1046  /* mediacodec process */
+#define AID_CAMERASERVER  1047  /* cameraserver process */
 
 #define AID_SHELL         2000  /* adb and debug shell user */
 #define AID_CACHE         2001  /* cache access */
@@ -102,6 +110,7 @@
 #define AID_NET_BW_ACCT   3007  /* change bandwidth statistics accounting */
 #define AID_NET_BT_STACK  3008  /* bluetooth: access config files */
 #define AID_READPROC      3009  /* Allow /proc read access */
+#define AID_WAKELOCK      3010  /* Allow system wakelock read/write access */
 
 /* The range 5000-5999 is also reserved for OEM, and must never be used here. */
 #define AID_OEM_RESERVED_2_START 5000
@@ -179,6 +188,14 @@ static const struct android_id_info android_ids[] = {
     { "shared_relro",  AID_SHARED_RELRO, },
     { "dbus",          AID_DBUS, },
     { "tlsdate",       AID_TLSDATE, },
+    { "mediaex",       AID_MEDIA_EX, },
+    { "audioserver",   AID_AUDIOSERVER, },
+    { "metrics_coll",  AID_METRICS_COLL },
+    { "metricsd",      AID_METRICSD },
+    { "webserv",       AID_WEBSERV },
+    { "debuggerd",     AID_DEBUGGERD, },
+    { "mediacodec",    AID_MEDIA_CODEC, },
+    { "cameraserver",  AID_CAMERASERVER, },
 
     { "shell",         AID_SHELL, },
     { "cache",         AID_CACHE, },
@@ -193,6 +210,7 @@ static const struct android_id_info android_ids[] = {
     { "net_bw_acct",   AID_NET_BW_ACCT, },
     { "net_bt_stack",  AID_NET_BT_STACK, },
     { "readproc",      AID_READPROC, },
+    { "wakelock",      AID_WAKELOCK, },
 
     { "everybody",     AID_EVERYBODY, },
     { "misc",          AID_MISC, },

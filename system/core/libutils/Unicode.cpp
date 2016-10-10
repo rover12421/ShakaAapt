@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <log/log.h>
 #include <utils/Unicode.h>
 
 #include <stddef.h>
@@ -182,7 +183,7 @@ ssize_t utf32_to_utf8_length(const char32_t *src, size_t src_len)
     return ret;
 }
 
-void utf32_to_utf8(const char32_t* src, size_t src_len, char* dst)
+void utf32_to_utf8(const char32_t* src, size_t src_len, char* dst, size_t dst_len)
 {
     if (src == NULL || src_len == 0 || dst == NULL) {
         return;
@@ -193,9 +194,12 @@ void utf32_to_utf8(const char32_t* src, size_t src_len, char* dst)
     char *cur = dst;
     while (cur_utf32 < end_utf32) {
         size_t len = utf32_codepoint_utf8_length(*cur_utf32);
+        LOG_ALWAYS_FATAL_IF(dst_len < len, "%zu < %zu", dst_len, len);
         utf32_codepoint_to_utf8((uint8_t *)cur, *cur_utf32++, len);
         cur += len;
+        dst_len -= len;
     }
+    LOG_ALWAYS_FATAL_IF(dst_len < 1, "dst_len < 1: %zu < 1", dst_len);
     *cur = '\0';
 }
 
@@ -222,11 +226,16 @@ int strncmp16(const char16_t *s1, const char16_t *s2, size_t n)
   char16_t ch;
   int d = 0;
 
-  while ( n-- ) {
-    d = (int)(ch = *s1++) - (int)*s2++;
-    if ( d || !ch )
-      break;
+  if (n == 0) {
+    return 0;
   }
+
+  do {
+    d = (int)(ch = *s1++) - (int)*s2++;
+    if ( d || !ch ) {
+      break;
+    }
+  } while (--n);
 
   return d;
 }
@@ -284,6 +293,25 @@ size_t strnlen16(const char16_t *s, size_t maxlen)
   return ss-s;
 }
 
+char16_t* strstr16(const char16_t* src, const char16_t* target)
+{
+    const char16_t needle = *target++;
+    const size_t target_len = strlen16(target);
+    if (needle != '\0') {
+      do {
+        do {
+          if (*src == '\0') {
+            return nullptr;
+          }
+        } while (*src++ != needle);
+      } while (strncmp16(src, target, target_len) != 0);
+      src--;
+    }
+
+    return (char16_t*)src;
+}
+
+
 int strzcmp16(const char16_t *s1, size_t n1, const char16_t *s2, size_t n2)
 {
     const char16_t* e1 = s1+n1;
@@ -324,7 +352,7 @@ int strzcmp16_h_n(const char16_t *s1H, size_t n1, const char16_t *s2N, size_t n2
            : 0);
 }
 
-void utf16_to_utf8(const char16_t* src, size_t src_len, char* dst)
+void utf16_to_utf8(const char16_t* src, size_t src_len, char* dst, size_t dst_len)
 {
     if (src == NULL || src_len == 0 || dst == NULL) {
         return;
@@ -345,9 +373,12 @@ void utf16_to_utf8(const char16_t* src, size_t src_len, char* dst)
             utf32 = (char32_t) *cur_utf16++;
         }
         const size_t len = utf32_codepoint_utf8_length(utf32);
+        LOG_ALWAYS_FATAL_IF(dst_len < len, "%zu < %zu", dst_len, len);
         utf32_codepoint_to_utf8((uint8_t*)cur, utf32, len);
         cur += len;
+        dst_len -= len;
     }
+    LOG_ALWAYS_FATAL_IF(dst_len < 1, "%zu < 1", dst_len);
     *cur = '\0';
 }
 
@@ -408,10 +439,10 @@ ssize_t utf16_to_utf8_length(const char16_t *src, size_t src_len)
     const char16_t* const end = src + src_len;
     while (src < end) {
         if ((*src & 0xFC00) == 0xD800 && (src + 1) < end
-                && (*++src & 0xFC00) == 0xDC00) {
+                && (*(src + 1) & 0xFC00) == 0xDC00) {
             // surrogate pairs are always 4 bytes.
             ret += 4;
-            src++;
+            src += 2;
         } else {
             ret += utf32_codepoint_utf8_length((char32_t) *src++);
         }

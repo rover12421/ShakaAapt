@@ -1,5 +1,0 @@
-The prebuilt ccache was built from source files inside ccache-3.1.9.tar.gz.
-The ccache-3.1.9.tar.gz file was dowloaded from http://ccache.samba.org/download.html.
-
-Linux build environment: x86_64, Ubuntu 12.04 (precise)
-Mac OS X build environment: x86_64, Mac OS X 10.8.5 (Moutain Lion)

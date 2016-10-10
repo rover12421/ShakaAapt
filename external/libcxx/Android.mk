@@ -22,7 +22,6 @@ LIBCXX_SRC_FILES := \
     src/bind.cpp \
     src/chrono.cpp \
     src/condition_variable.cpp \
-    src/config_elast.h \
     src/debug.cpp \
     src/exception.cpp \
     src/future.cpp \
@@ -40,7 +39,6 @@ LIBCXX_SRC_FILES := \
     src/stdexcept.cpp \
     src/string.cpp \
     src/strstream.cpp \
-    src/support \
     src/system_error.cpp \
     src/thread.cpp \
     src/typeinfo.cpp \
@@ -94,9 +92,6 @@ LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
 include $(BUILD_HOST_STATIC_LIBRARY)
 
-# Don't build for unbundled branches
-ifeq (,$(TARGET_BUILD_APPS))
-
 # host dynamic lib
 include $(CLEAR_VARS)
 LOCAL_MODULE := libc++
@@ -121,5 +116,3 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 ifdef LIBCXX_TESTING
 include $(LOCAL_PATH)/buildcmds/Android.mk
 endif
-
-endif  # TARGET_BUILD_APPS

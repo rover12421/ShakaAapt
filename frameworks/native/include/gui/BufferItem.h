@@ -98,13 +98,8 @@ class BufferItem : public Flattenable<BufferItem> {
         };
     };
 
-    union {
-        // mSlot is the slot index of this buffer (default INVALID_BUFFER_SLOT).
-        int mSlot;
-
-        // mBuf is the former name for mSlot
-        int mBuf;
-    };
+    // mSlot is the slot index of this buffer (default INVALID_BUFFER_SLOT).
+    int mSlot;
 
     // mIsDroppable whether this buffer was queued with the
     // property that it can be replaced by a new buffer for the purpose of
@@ -123,6 +118,19 @@ class BufferItem : public Flattenable<BufferItem> {
     // Describes the portion of the surface that has been modified since the
     // previous frame
     Region mSurfaceDamage;
+
+    // Indicates that the consumer should acquire the next frame as soon as it
+    // can and not wait for a frame to become available. This is only relevant
+    // in shared buffer mode.
+    bool mAutoRefresh;
+
+    // Indicates that this buffer was queued by the producer. When in shared
+    // buffer mode acquire() can return a BufferItem that wasn't in the queue.
+    bool mQueuedBuffer;
+
+    // Indicates that this BufferItem contains a stale buffer which has already
+    // been released by the BufferQueue.
+    bool mIsStale;
 };
 
 } // namespace android

@@ -88,6 +88,7 @@ typedef enum OMX_VIDEO_CODINGTYPE {
     OMX_VIDEO_CodingVP8,        /**< Google VP8, formerly known as On2 VP8 */
     OMX_VIDEO_CodingVP9,        /**< Google VP9 */
     OMX_VIDEO_CodingHEVC,       /**< ITU H.265/HEVC */
+    OMX_VIDEO_CodingDolbyVision,/**< Dolby Vision */
     OMX_VIDEO_CodingKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     OMX_VIDEO_CodingVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
     OMX_VIDEO_CodingMax = 0x7FFFFFFF
@@ -552,6 +553,7 @@ typedef enum OMX_VIDEO_MPEG2LEVELTYPE {
     OMX_VIDEO_MPEG2LevelML,      /**< Main Level */
     OMX_VIDEO_MPEG2LevelH14,     /**< High 1440 */
     OMX_VIDEO_MPEG2LevelHL,      /**< High Level */
+    OMX_VIDEO_MPEG2LevelHP,      /**< HighP Level */
     OMX_VIDEO_MPEG2LevelKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     OMX_VIDEO_MPEG2LevelVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
     OMX_VIDEO_MPEG2LevelMax = 0x7FFFFFFF
@@ -635,9 +637,12 @@ typedef enum OMX_VIDEO_MPEG4LEVELTYPE {
     OMX_VIDEO_MPEG4Level1  = 0x04,   /**< Level 1 */
     OMX_VIDEO_MPEG4Level2  = 0x08,   /**< Level 2 */
     OMX_VIDEO_MPEG4Level3  = 0x10,   /**< Level 3 */
+    /* normally levels are powers of 2s, but 3b was missed and levels must be properly ordered */
+    OMX_VIDEO_MPEG4Level3b = 0x18,   /**< Level 3a */
     OMX_VIDEO_MPEG4Level4  = 0x20,   /**< Level 4 */
     OMX_VIDEO_MPEG4Level4a = 0x40,   /**< Level 4a */
     OMX_VIDEO_MPEG4Level5  = 0x80,   /**< Level 5 */
+    OMX_VIDEO_MPEG4Level6  = 0x100,  /**< Level 6 */
     OMX_VIDEO_MPEG4LevelKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     OMX_VIDEO_MPEG4LevelVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
     OMX_VIDEO_MPEG4LevelMax = 0x7FFFFFFF

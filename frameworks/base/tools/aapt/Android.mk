@@ -57,8 +57,8 @@ aaptTests := \
 aaptHostStaticLibs := \
     libandroidfw \
     libpng \
-    liblog \
     libutils \
+    liblog \
     libcutils \
     libexpat \
     libziparchive-host \
@@ -106,11 +106,6 @@ LOCAL_LDLIBS_linux := $(aaptHostLdLibs_linux)
 LOCAL_SRC_FILES := $(aaptMain)
 LOCAL_STATIC_LIBRARIES := libaapt $(aaptHostStaticLibs)
 LOCAL_STATIC_LIBRARIES_windows := $(aaptHostStaticLibs_windows)
-#[Rover12421]>
-ifneq ($($(my_prefix)OS),windows)
-LOCAL_CXX_STL := libc++_static
-endif
-#[Rover12421]<
 
 include $(BUILD_HOST_EXECUTABLE)
 

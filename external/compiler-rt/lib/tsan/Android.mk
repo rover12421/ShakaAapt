@@ -45,6 +45,7 @@ tsan_rtl_files := \
   rtl/tsan_symbolize.cc \
   rtl/tsan_sync.cc \
   rtl/tsan_platform_linux.cc \
+  rtl/tsan_platform_posix.cc \
   rtl/tsan_rtl_amd64.S \
 
 tsan_rtl_cppflags := -std=c++11 -Wall -Werror -Wno-unused-parameter -Wno-non-virtual-dtor \
@@ -116,7 +117,7 @@ tsan_rtl_test_src_files := \
   tests/rtl/tsan_mutex.cc \
   tests/rtl/tsan_posix.cc \
   tests/rtl/tsan_string.cc \
-  tests/rtl/tsan_test_util_linux.cc \
+  tests/rtl/tsan_test_util_posix.cc \
   tests/rtl/tsan_test.cc \
   tests/rtl/tsan_thread.cc \
 

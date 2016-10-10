@@ -19,17 +19,27 @@ LOCAL_PATH := $(call my-dir)
 libbase_src_files := \
     file.cpp \
     logging.cpp \
+    parsenetaddress.cpp \
     stringprintf.cpp \
     strings.cpp \
     test_utils.cpp \
 
+libbase_linux_src_files := \
+    errors_unix.cpp \
+
+libbase_darwin_src_files := \
+    errors_unix.cpp \
+
 libbase_windows_src_files := \
+    errors_windows.cpp \
     utf8.cpp \
 
 libbase_test_src_files := \
+    errors_test.cpp \
     file_test.cpp \
     logging_test.cpp \
     parseint_test.cpp \
+    parsenetaddress_test.cpp \
     stringprintf_test.cpp \
     strings_test.cpp \
     test_main.cpp \
@@ -53,14 +63,11 @@ libbase_darwin_cppflags := \
 include $(CLEAR_VARS)
 LOCAL_MODULE := libbase
 LOCAL_CLANG := true
-LOCAL_SRC_FILES := $(libbase_src_files)
-LOCAL_SRC_FILES_darwin := $(libbase_darwin_src_files)
-LOCAL_SRC_FILES_linux := $(libbase_linux_src_files)
-LOCAL_SRC_FILES_windows := $(libbase_windows_src_files)
+LOCAL_SRC_FILES := $(libbase_src_files) $(libbase_linux_src_files)
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
 LOCAL_CPPFLAGS := $(libbase_cppflags) $(libbase_linux_cppflags)
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
-LOCAL_STATIC_LIBRARIES := libcutils
+LOCAL_STATIC_LIBRARIES := liblog
 LOCAL_MULTILIB := both
 include $(BUILD_STATIC_LIBRARY)
 
@@ -70,7 +77,6 @@ LOCAL_CLANG := true
 LOCAL_WHOLE_STATIC_LIBRARIES := libbase
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
-LOCAL_SHARED_LIBRARIES := libcutils
 LOCAL_MULTILIB := both
 include $(BUILD_SHARED_LIBRARY)
 
@@ -87,7 +93,7 @@ LOCAL_CPPFLAGS := $(libbase_cppflags)
 LOCAL_CPPFLAGS_darwin := $(libbase_darwin_cppflags)
 LOCAL_CPPFLAGS_linux := $(libbase_linux_cppflags)
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
-LOCAL_STATIC_LIBRARIES := libcutils
+LOCAL_STATIC_LIBRARIES := liblog
 LOCAL_MULTILIB := both
 LOCAL_MODULE_HOST_OS := darwin linux windows
 include $(BUILD_HOST_STATIC_LIBRARY)
@@ -97,7 +103,6 @@ LOCAL_MODULE := libbase
 LOCAL_WHOLE_STATIC_LIBRARIES := libbase
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
-LOCAL_STATIC_LIBRARIES := libcutils
 LOCAL_MULTILIB := both
 LOCAL_MODULE_HOST_OS := darwin linux windows
 include $(BUILD_HOST_SHARED_LIBRARY)

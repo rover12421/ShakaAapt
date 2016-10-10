@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/file.h"
+#include "android-base/file.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -23,15 +23,11 @@
 
 #include <string>
 
-#include "base/macros.h"  // For TEMP_FAILURE_RETRY on Darwin.
-#include "base/utf8.h"
+#include "android-base/macros.h"  // For TEMP_FAILURE_RETRY on Darwin.
+#include "android-base/utf8.h"
 #define LOG_TAG "base.file"
 #include "cutils/log.h"
 #include "utils/Compat.h"
-
-#if !defined(_WIN32)
-#define O_BINARY 0
-#endif
 
 namespace android {
 namespace base {
@@ -145,6 +141,33 @@ bool WriteFully(int fd, const void* data, size_t byte_count) {
     if (n == -1) return false;
     p += n;
     remaining -= n;
+  }
+  return true;
+}
+
+bool RemoveFileIfExists(const std::string& path, std::string* err) {
+  struct stat st;
+#if defined(_WIN32)
+  //TODO: Windows version can't handle symbol link correctly.
+  int result = stat(path.c_str(), &st);
+  bool file_type_removable = (result == 0 && S_ISREG(st.st_mode));
+#else
+  int result = lstat(path.c_str(), &st);
+  bool file_type_removable = (result == 0 && (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)));
+#endif
+  if (result == 0) {
+    if (!file_type_removable) {
+      if (err != nullptr) {
+        *err = "is not a regular or symbol link file";
+      }
+      return false;
+    }
+    if (unlink(path.c_str()) == -1) {
+      if (err != nullptr) {
+        *err = strerror(errno);
+      }
+      return false;
+    }
   }
   return true;
 }

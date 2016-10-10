@@ -32,12 +32,12 @@
 #include <cutils/list.h>
 #include <log/logd.h>
 #include <log/logprint.h>
+#include <private/android_filesystem_config.h>
+
+#include "log_portability.h"
 
 #define MS_PER_NSEC 1000000
 #define US_PER_NSEC 1000
-
-/* open coded fragment, prevent circular dependencies */
-#define WEAK static
 
 typedef struct FilterInfo_t {
     char *mTag;
@@ -56,6 +56,7 @@ struct AndroidLogFormat_t {
     bool zone_output;
     bool epoch_output;
     bool monotonic_output;
+    bool uid_output;
 };
 
 /*
@@ -183,13 +184,15 @@ static android_LogPriority filterPriForTag(
  * returns 1 if this log line should be printed based on its priority
  * and tag, and 0 if it should not
  */
-int android_log_shouldPrintLine (
-        AndroidLogFormat *p_format, const char *tag, android_LogPriority pri)
+LIBLOG_ABI_PUBLIC int android_log_shouldPrintLine (
+        AndroidLogFormat *p_format,
+        const char *tag,
+        android_LogPriority pri)
 {
     return pri >= filterPriForTag(p_format, tag);
 }
 
-AndroidLogFormat *android_log_format_new()
+LIBLOG_ABI_PUBLIC AndroidLogFormat *android_log_format_new()
 {
     AndroidLogFormat *p_ret;
 
@@ -203,14 +206,15 @@ AndroidLogFormat *android_log_format_new()
     p_ret->year_output = false;
     p_ret->zone_output = false;
     p_ret->epoch_output = false;
-    p_ret->monotonic_output = android_log_timestamp() == 'm';
+    p_ret->monotonic_output = android_log_clockid() == CLOCK_MONOTONIC;
+    p_ret->uid_output = false;
 
     return p_ret;
 }
 
 static list_declare(convertHead);
 
-void android_log_format_free(AndroidLogFormat *p_format)
+LIBLOG_ABI_PUBLIC void android_log_format_free(AndroidLogFormat *p_format)
 {
     FilterInfo *p_info, *p_info_old;
 
@@ -233,7 +237,8 @@ void android_log_format_free(AndroidLogFormat *p_format)
     }
 }
 
-int android_log_setPrintFormat(AndroidLogFormat *p_format,
+LIBLOG_ABI_PUBLIC int android_log_setPrintFormat(
+        AndroidLogFormat *p_format,
         AndroidLogPrintFormat format)
 {
     switch (format) {
@@ -258,6 +263,9 @@ int android_log_setPrintFormat(AndroidLogFormat *p_format,
     case FORMAT_MODIFIER_MONOTONIC:
         p_format->monotonic_output = true;
         return 0;
+    case FORMAT_MODIFIER_UID:
+        p_format->uid_output = true;
+        return 0;
     default:
         break;
     }
@@ -271,7 +279,8 @@ static const char utc[] = "UTC";
 /**
  * Returns FORMAT_OFF on invalid string
  */
-AndroidLogPrintFormat android_log_formatFromString(const char * formatString)
+LIBLOG_ABI_PUBLIC AndroidLogPrintFormat android_log_formatFromString(
+        const char * formatString)
 {
     static AndroidLogPrintFormat format;
 
@@ -290,6 +299,7 @@ AndroidLogPrintFormat android_log_formatFromString(const char * formatString)
     else if (strcmp(formatString, "zone") == 0) format = FORMAT_MODIFIER_ZONE;
     else if (strcmp(formatString, "epoch") == 0) format = FORMAT_MODIFIER_EPOCH;
     else if (strcmp(formatString, "monotonic") == 0) format = FORMAT_MODIFIER_MONOTONIC;
+    else if (strcmp(formatString, "uid") == 0) format = FORMAT_MODIFIER_UID;
     else {
         extern char *tzname[2];
         static const char gmt[] = "GMT";
@@ -334,7 +344,8 @@ AndroidLogPrintFormat android_log_formatFromString(const char * formatString)
  * Assumes single threaded execution
  */
 
-int android_log_addFilterRule(AndroidLogFormat *p_format,
+LIBLOG_ABI_PUBLIC int android_log_addFilterRule(
+        AndroidLogFormat *p_format,
         const char *filterExpression)
 {
     size_t tagNameLength;
@@ -412,7 +423,8 @@ error:
  *
  */
 
-int android_log_addFilterString(AndroidLogFormat *p_format,
+LIBLOG_ABI_PUBLIC int android_log_addFilterString(
+        AndroidLogFormat *p_format,
         const char *filterString)
 {
     char *filterStringCopy = strdup (filterString);
@@ -446,11 +458,13 @@ error:
  * Returns 0 on success and -1 on invalid wire format (entry will be
  * in unspecified state)
  */
-int android_log_processLogBuffer(struct logger_entry *buf,
-                                 AndroidLogEntry *entry)
+LIBLOG_ABI_PUBLIC int android_log_processLogBuffer(
+        struct logger_entry *buf,
+        AndroidLogEntry *entry)
 {
     entry->tv_sec = buf->sec;
     entry->tv_nsec = buf->nsec;
+    entry->uid = -1;
     entry->pid = buf->pid;
     entry->tid = buf->tid;
 
@@ -482,6 +496,9 @@ int android_log_processLogBuffer(struct logger_entry *buf,
     struct logger_entry_v2 *buf2 = (struct logger_entry_v2 *)buf;
     if (buf2->hdr_size) {
         msg = ((char *)buf2) + buf2->hdr_size;
+        if (buf2->hdr_size >= sizeof(struct logger_entry_v4)) {
+            entry->uid = ((struct logger_entry_v4 *)buf)->uid;
+        }
     }
     for (i = 1; i < buf->len; i++) {
         if (msg[i] == '\0') {
@@ -495,19 +512,29 @@ int android_log_processLogBuffer(struct logger_entry *buf,
     }
 
     if (msgStart == -1) {
-        fprintf(stderr, "+++ LOG: malformed log message\n");
-        return -1;
+        /* +++ LOG: malformed log message, DYB */
+        for (i = 1; i < buf->len; i++) {
+            /* odd characters in tag? */
+            if ((msg[i] <= ' ') || (msg[i] == ':') || (msg[i] >= 0x7f)) {
+                msg[i] = '\0';
+                msgStart = i + 1;
+                break;
+            }
+        }
+        if (msgStart == -1) {
+            msgStart = buf->len - 1; /* All tag, no message, print truncates */
+        }
     }
     if (msgEnd == -1) {
         /* incoming message not null-terminated; force it */
-        msgEnd = buf->len - 1;
+        msgEnd = buf->len - 1; /* may result in msgEnd < msgStart */
         msg[msgEnd] = '\0';
     }
 
     entry->priority = msg[0];
     entry->tag = msg + 1;
     entry->message = msg + msgStart;
-    entry->messageLen = msgEnd - msgStart;
+    entry->messageLen = (msgEnd < msgStart) ? 0 : (msgEnd - msgStart);
 
     return 0;
 }
@@ -723,9 +750,11 @@ no_room:
  * it however we choose, which means we can't really use a fixed-size buffer
  * here.
  */
-int android_log_processBinaryLogBuffer(struct logger_entry *buf,
-    AndroidLogEntry *entry, const EventTagMap* map, char* messageBuf,
-    int messageBufLen)
+LIBLOG_ABI_PUBLIC int android_log_processBinaryLogBuffer(
+        struct logger_entry *buf,
+        AndroidLogEntry *entry,
+        const EventTagMap *map,
+        char *messageBuf, int messageBufLen)
 {
     size_t inCount;
     unsigned int tagIndex;
@@ -734,16 +763,25 @@ int android_log_processBinaryLogBuffer(struct logger_entry *buf,
     entry->tv_sec = buf->sec;
     entry->tv_nsec = buf->nsec;
     entry->priority = ANDROID_LOG_INFO;
+    entry->uid = -1;
     entry->pid = buf->pid;
     entry->tid = buf->tid;
 
     /*
-     * Pull the tag out.
+     * Pull the tag out, fill in some additional details based on incoming
+     * buffer version (v3 adds lid, v4 adds uid).
      */
     eventData = (const unsigned char*) buf->msg;
     struct logger_entry_v2 *buf2 = (struct logger_entry_v2 *)buf;
     if (buf2->hdr_size) {
         eventData = ((unsigned char *)buf2) + buf2->hdr_size;
+        if ((buf2->hdr_size >= sizeof(struct logger_entry_v3)) &&
+                (((struct logger_entry_v3 *)buf)->lid == LOG_ID_SECURITY)) {
+            entry->priority = ANDROID_LOG_WARN;
+        }
+        if (buf2->hdr_size >= sizeof(struct logger_entry_v4)) {
+            entry->uid = ((struct logger_entry_v4 *)buf)->uid;
+        }
     }
     inCount = buf->len;
     if (inCount < 4)
@@ -832,7 +870,7 @@ int android_log_processBinaryLogBuffer(struct logger_entry *buf,
  * _also_ be part of libutils/Unicode.cpp if its usefullness needs to
  * propagate globally.
  */
-WEAK ssize_t utf8_character_length(const char *src, size_t len)
+LIBLOG_WEAK ssize_t utf8_character_length(const char *src, size_t len)
 {
     const char *cur = src;
     const char first_char = *cur++;
@@ -908,7 +946,7 @@ static size_t convertPrintable(char *p, const char *message, size_t messageLen)
                 } else if (*message == '\b') {
                     strcpy(buf, "\\b");
                 } else if (*message == '\t') {
-                    strcpy(buf, "\\t");
+                    strcpy(buf, "\t"); // Do not escape tabs
                 } else if (*message == '\v') {
                     strcpy(buf, "\\v");
                 } else if (*message == '\f') {
@@ -936,7 +974,7 @@ static size_t convertPrintable(char *p, const char *message, size_t messageLen)
     return p - begin;
 }
 
-char *readSeconds(char *e, struct timespec *t)
+static char *readSeconds(char *e, struct timespec *t)
 {
     unsigned long multiplier;
     char *p;
@@ -1004,7 +1042,7 @@ static void convertMonotonic(struct timespec *result,
          * Anything in the Android Logger before the dmesg logging span will
          * be highly suspect regarding the monotonic time calculations.
          */
-        FILE *p = popen("/system/bin/dmesg", "r");
+        FILE *p = popen("/system/bin/dmesg", "re");
         if (p) {
             char *line = NULL;
             size_t len = 0;
@@ -1223,12 +1261,12 @@ static void convertMonotonic(struct timespec *result,
  * Returns NULL on malloc error
  */
 
-char *android_log_formatLogLine (
-    AndroidLogFormat *p_format,
-    char *defaultBuffer,
-    size_t defaultBufferSize,
-    const AndroidLogEntry *entry,
-    size_t *p_outLength)
+LIBLOG_ABI_PUBLIC char *android_log_formatLogLine (
+        AndroidLogFormat *p_format,
+        char *defaultBuffer,
+        size_t defaultBufferSize,
+        const AndroidLogEntry *entry,
+        size_t *p_outLength)
 {
 #if !defined(_WIN32)
     struct tm tmBuf;
@@ -1238,7 +1276,7 @@ char *android_log_formatLogLine (
     char prefixBuf[128], suffixBuf[128];
     char priChar;
     int prefixSuffixIsHeaderFooter = 0;
-    char *ret = NULL;
+    char *ret;
     time_t now;
     unsigned long nsec;
 
@@ -1262,7 +1300,7 @@ char *android_log_formatLogLine (
     nsec = entry->tv_nsec;
     if (p_format->monotonic_output) {
         // prevent convertMonotonic from being called if logd is monotonic
-        if (android_log_timestamp() != 'm') {
+        if (android_log_clockid() != CLOCK_MONOTONIC) {
             struct timespec time;
             convertMonotonic(&time, entry);
             now = time.tv_sec;
@@ -1310,6 +1348,30 @@ char *android_log_formatLogLine (
         suffixLen = MIN(suffixLen, sizeof(suffixBuf));
     }
 
+    char uid[16];
+    uid[0] = '\0';
+    if (p_format->uid_output) {
+        if (entry->uid >= 0) {
+            const struct android_id_info *info = android_ids;
+            size_t i;
+
+            for (i = 0; i < android_id_count; ++i) {
+                if (info->aid == (unsigned int)entry->uid) {
+                    break;
+                }
+                ++info;
+            }
+            if ((i < android_id_count) && (strlen(info->name) <= 5)) {
+                 snprintf(uid, sizeof(uid), "%5s:", info->name);
+            } else {
+                 // Not worth parsing package list, names all longer than 5
+                 snprintf(uid, sizeof(uid), "%5d:", entry->uid);
+            }
+        } else {
+            snprintf(uid, sizeof(uid), "      ");
+        }
+    }
+
     switch (p_format->format) {
         case FORMAT_TAG:
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
@@ -1322,11 +1384,11 @@ char *android_log_formatLogLine (
                 "  (%s)\n", entry->tag);
             suffixLen += MIN(len, sizeof(suffixBuf) - suffixLen);
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
-                "%c(%5d) ", priChar, entry->pid);
+                "%c(%s%5d) ", priChar, uid, entry->pid);
             break;
         case FORMAT_THREAD:
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
-                "%c(%5d:%5d) ", priChar, entry->pid, entry->tid);
+                "%c(%s%5d:%5d) ", priChar, uid, entry->pid, entry->tid);
             strcpy(suffixBuf + suffixLen, "\n");
             ++suffixLen;
             break;
@@ -1338,21 +1400,26 @@ char *android_log_formatLogLine (
             break;
         case FORMAT_TIME:
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
-                "%s %c/%-8s(%5d): ", timeBuf, priChar, entry->tag, entry->pid);
+                "%s %c/%-8s(%s%5d): ", timeBuf, priChar, entry->tag,
+                uid, entry->pid);
             strcpy(suffixBuf + suffixLen, "\n");
             ++suffixLen;
             break;
         case FORMAT_THREADTIME:
+            ret = strchr(uid, ':');
+            if (ret) {
+                *ret = ' ';
+            }
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
-                "%s %5d %5d %c %-8s: ", timeBuf,
-                entry->pid, entry->tid, priChar, entry->tag);
+                "%s %s%5d %5d %c %-8s: ", timeBuf,
+                uid, entry->pid, entry->tid, priChar, entry->tag);
             strcpy(suffixBuf + suffixLen, "\n");
             ++suffixLen;
             break;
         case FORMAT_LONG:
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
-                "[ %s %5d:%5d %c/%-8s ]\n",
-                timeBuf, entry->pid, entry->tid, priChar, entry->tag);
+                "[ %s %s%5d:%5d %c/%-8s ]\n",
+                timeBuf, uid, entry->pid, entry->tid, priChar, entry->tag);
             strcpy(suffixBuf + suffixLen, "\n\n");
             suffixLen += 2;
             prefixSuffixIsHeaderFooter = 1;
@@ -1360,7 +1427,7 @@ char *android_log_formatLogLine (
         case FORMAT_BRIEF:
         default:
             len = snprintf(prefixBuf + prefixLen, sizeof(prefixBuf) - prefixLen,
-                "%c/%-8s(%5d): ", priChar, entry->tag, entry->pid);
+                "%c/%-8s(%s%5d): ", priChar, entry->tag, uid, entry->pid);
             strcpy(suffixBuf + suffixLen, "\n");
             ++suffixLen;
             break;
@@ -1372,8 +1439,16 @@ char *android_log_formatLogLine (
      * possibly causing heap corruption.  To avoid this we double check and
      * set the length at the maximum (size minus null byte)
      */
-    prefixLen += MIN(len, sizeof(prefixBuf) - prefixLen);
-    suffixLen = MIN(suffixLen, sizeof(suffixBuf));
+    prefixLen += len;
+    if (prefixLen >= sizeof(prefixBuf)) {
+        prefixLen = sizeof(prefixBuf) - 1;
+        prefixBuf[sizeof(prefixBuf) - 1] = '\0';
+    }
+    if (suffixLen >= sizeof(suffixBuf)) {
+        suffixLen = sizeof(suffixBuf) - 1;
+        suffixBuf[sizeof(suffixBuf) - 2] = '\n';
+        suffixBuf[sizeof(suffixBuf) - 1] = '\0';
+    }
 
     /* the following code is tragically unreadable */
 
@@ -1439,7 +1514,7 @@ char *android_log_formatLogLine (
         strcat(p, suffixBuf);
         p += suffixLen;
     } else {
-        while(pm < (entry->message + entry->messageLen)) {
+        do {
             const char *lineStart;
             size_t lineLen;
             lineStart = pm;
@@ -1461,7 +1536,7 @@ char *android_log_formatLogLine (
             p += suffixLen;
 
             if (*pm == '\n') pm++;
-        }
+        } while (pm < (entry->message + entry->messageLen));
     }
 
     if (p_outLength != NULL) {
@@ -1477,10 +1552,10 @@ char *android_log_formatLogLine (
  * Returns count bytes written
  */
 
-int android_log_printLogLine(
-    AndroidLogFormat *p_format,
-    int fd,
-    const AndroidLogEntry *entry)
+LIBLOG_ABI_PUBLIC int android_log_printLogLine(
+        AndroidLogFormat *p_format,
+        int fd,
+        const AndroidLogEntry *entry)
 {
     int ret;
     char defaultBuffer[512];

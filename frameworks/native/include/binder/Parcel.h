@@ -17,9 +17,11 @@
 #ifndef ANDROID_PARCEL_H
 #define ANDROID_PARCEL_H
 
+#include <string>
 #include <vector>
 
 #include <cutils/native_handle.h>
+#include <nativehelper/ScopedFd.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 #include <utils/String16.h>
@@ -28,6 +30,7 @@
 #include <linux/binder.h>
 
 #include <binder/IInterface.h>
+#include <binder/Parcelable.h>
 
 // ---------------------------------------------------------------------------
 namespace android {
@@ -107,6 +110,7 @@ public:
     status_t            writeCString(const char* str);
     status_t            writeString8(const String8& str);
     status_t            writeString16(const String16& str);
+    status_t            writeString16(const std::unique_ptr<String16>& str);
     status_t            writeString16(const char16_t* str, size_t len);
     status_t            writeStrongBinder(const sp<IBinder>& val);
     status_t            writeWeakBinder(const wp<IBinder>& val);
@@ -116,16 +120,45 @@ public:
     status_t            writeChar(char16_t val);
     status_t            writeByte(int8_t val);
 
-    status_t            writeByteVector(const std::vector<int8_t>& val);
-    status_t            writeInt32Vector(const std::vector<int32_t>& val);
-    status_t            writeInt64Vector(const std::vector<int64_t>& val);
-    status_t            writeFloatVector(const std::vector<float>& val);
-    status_t            writeDoubleVector(const std::vector<double>& val);
-    status_t            writeBoolVector(const std::vector<bool>& val);
-    status_t            writeCharVector(const std::vector<char16_t>& val);
-    status_t            writeString16Vector(const std::vector<String16>& val);
+    // Take a UTF8 encoded string, convert to UTF16, write it to the parcel.
+    status_t            writeUtf8AsUtf16(const std::string& str);
+    status_t            writeUtf8AsUtf16(const std::unique_ptr<std::string>& str);
 
+    status_t            writeByteVector(const std::unique_ptr<std::vector<int8_t>>& val);
+    status_t            writeByteVector(const std::vector<int8_t>& val);
+    status_t            writeByteVector(const std::unique_ptr<std::vector<uint8_t>>& val);
+    status_t            writeByteVector(const std::vector<uint8_t>& val);
+    status_t            writeInt32Vector(const std::unique_ptr<std::vector<int32_t>>& val);
+    status_t            writeInt32Vector(const std::vector<int32_t>& val);
+    status_t            writeInt64Vector(const std::unique_ptr<std::vector<int64_t>>& val);
+    status_t            writeInt64Vector(const std::vector<int64_t>& val);
+    status_t            writeFloatVector(const std::unique_ptr<std::vector<float>>& val);
+    status_t            writeFloatVector(const std::vector<float>& val);
+    status_t            writeDoubleVector(const std::unique_ptr<std::vector<double>>& val);
+    status_t            writeDoubleVector(const std::vector<double>& val);
+    status_t            writeBoolVector(const std::unique_ptr<std::vector<bool>>& val);
+    status_t            writeBoolVector(const std::vector<bool>& val);
+    status_t            writeCharVector(const std::unique_ptr<std::vector<char16_t>>& val);
+    status_t            writeCharVector(const std::vector<char16_t>& val);
+    status_t            writeString16Vector(
+                            const std::unique_ptr<std::vector<std::unique_ptr<String16>>>& val);
+    status_t            writeString16Vector(const std::vector<String16>& val);
+    status_t            writeUtf8VectorAsUtf16Vector(
+                            const std::unique_ptr<std::vector<std::unique_ptr<std::string>>>& val);
+    status_t            writeUtf8VectorAsUtf16Vector(const std::vector<std::string>& val);
+
+    status_t            writeStrongBinderVector(const std::unique_ptr<std::vector<sp<IBinder>>>& val);
     status_t            writeStrongBinderVector(const std::vector<sp<IBinder>>& val);
+
+    template<typename T>
+    status_t            writeParcelableVector(const std::unique_ptr<std::vector<std::unique_ptr<T>>>& val);
+    template<typename T>
+    status_t            writeParcelableVector(const std::vector<T>& val);
+
+    template<typename T>
+    status_t            writeNullableParcelable(const std::unique_ptr<T>& parcelable);
+
+    status_t            writeParcelable(const Parcelable& parcelable);
 
     template<typename T>
     status_t            write(const Flattenable<T>& val);
@@ -148,6 +181,19 @@ public:
     // Place a file descriptor into the parcel.  A dup of the fd is made, which
     // will be closed once the parcel is destroyed.
     status_t            writeDupFileDescriptor(int fd);
+
+    // Place a file descriptor into the parcel.  This will not affect the
+    // semantics of the smart file descriptor. A new descriptor will be
+    // created, and will be closed when the parcel is destroyed.
+    status_t            writeUniqueFileDescriptor(
+                            const ScopedFd& fd);
+
+    // Place a vector of file desciptors into the parcel. Each descriptor is
+    // dup'd as in writeDupFileDescriptor
+    status_t            writeUniqueFileDescriptorVector(
+                            const std::unique_ptr<std::vector<ScopedFd>>& val);
+    status_t            writeUniqueFileDescriptorVector(
+                            const std::vector<ScopedFd>& val);
 
     // Writes a blob to the parcel.
     // If the blob is small, then it is stored in-place, otherwise it is
@@ -194,28 +240,59 @@ public:
     int8_t              readByte() const;
     status_t            readByte(int8_t *pArg) const;
 
+    // Read a UTF16 encoded string, convert to UTF8
+    status_t            readUtf8FromUtf16(std::string* str) const;
+    status_t            readUtf8FromUtf16(std::unique_ptr<std::string>* str) const;
+
     const char*         readCString() const;
     String8             readString8() const;
     String16            readString16() const;
     status_t            readString16(String16* pArg) const;
+    status_t            readString16(std::unique_ptr<String16>* pArg) const;
     const char16_t*     readString16Inplace(size_t* outLen) const;
     sp<IBinder>         readStrongBinder() const;
     status_t            readStrongBinder(sp<IBinder>* val) const;
     wp<IBinder>         readWeakBinder() const;
 
     template<typename T>
+    status_t            readParcelableVector(
+                            std::unique_ptr<std::vector<std::unique_ptr<T>>>* val) const;
+    template<typename T>
+    status_t            readParcelableVector(std::vector<T>* val) const;
+
+    status_t            readParcelable(Parcelable* parcelable) const;
+
+    template<typename T>
+    status_t            readParcelable(std::unique_ptr<T>* parcelable) const;
+
+    template<typename T>
     status_t            readStrongBinder(sp<T>* val) const;
 
+    status_t            readStrongBinderVector(std::unique_ptr<std::vector<sp<IBinder>>>* val) const;
     status_t            readStrongBinderVector(std::vector<sp<IBinder>>* val) const;
 
+    status_t            readByteVector(std::unique_ptr<std::vector<int8_t>>* val) const;
     status_t            readByteVector(std::vector<int8_t>* val) const;
+    status_t            readByteVector(std::unique_ptr<std::vector<uint8_t>>* val) const;
+    status_t            readByteVector(std::vector<uint8_t>* val) const;
+    status_t            readInt32Vector(std::unique_ptr<std::vector<int32_t>>* val) const;
     status_t            readInt32Vector(std::vector<int32_t>* val) const;
+    status_t            readInt64Vector(std::unique_ptr<std::vector<int64_t>>* val) const;
     status_t            readInt64Vector(std::vector<int64_t>* val) const;
+    status_t            readFloatVector(std::unique_ptr<std::vector<float>>* val) const;
     status_t            readFloatVector(std::vector<float>* val) const;
+    status_t            readDoubleVector(std::unique_ptr<std::vector<double>>* val) const;
     status_t            readDoubleVector(std::vector<double>* val) const;
+    status_t            readBoolVector(std::unique_ptr<std::vector<bool>>* val) const;
     status_t            readBoolVector(std::vector<bool>* val) const;
+    status_t            readCharVector(std::unique_ptr<std::vector<char16_t>>* val) const;
     status_t            readCharVector(std::vector<char16_t>* val) const;
+    status_t            readString16Vector(
+                            std::unique_ptr<std::vector<std::unique_ptr<String16>>>* val) const;
     status_t            readString16Vector(std::vector<String16>* val) const;
+    status_t            readUtf8VectorFromUtf16Vector(
+                            std::unique_ptr<std::vector<std::unique_ptr<std::string>>>* val) const;
+    status_t            readUtf8VectorFromUtf16Vector(std::vector<std::string>* val) const;
 
     template<typename T>
     status_t            read(Flattenable<T>& val) const;
@@ -240,6 +317,17 @@ public:
     // Retrieve a file descriptor from the parcel.  This returns the raw fd
     // in the parcel, which you do not own -- use dup() to get your own copy.
     int                 readFileDescriptor() const;
+
+    // Retrieve a smart file descriptor from the parcel.
+    status_t            readUniqueFileDescriptor(
+                            ScopedFd* val) const;
+
+
+    // Retrieve a vector of smart file descriptors from the parcel.
+    status_t            readUniqueFileDescriptorVector(
+                            std::unique_ptr<std::vector<ScopedFd>>* val) const;
+    status_t            readUniqueFileDescriptorVector(
+                            std::vector<ScopedFd>* val) const;
 
     // Reads a blob from the parcel.
     // The caller should call release() on the blob after reading its contents.
@@ -296,6 +384,34 @@ private:
     template<class T>
     status_t            writeAligned(T val);
 
+    status_t            writeRawNullableParcelable(const Parcelable*
+                                                   parcelable);
+
+    template<typename T, typename U>
+    status_t            unsafeReadTypedVector(std::vector<T>* val,
+                                              status_t(Parcel::*read_func)(U*) const) const;
+    template<typename T>
+    status_t            readNullableTypedVector(std::unique_ptr<std::vector<T>>* val,
+                                                status_t(Parcel::*read_func)(T*) const) const;
+    template<typename T>
+    status_t            readTypedVector(std::vector<T>* val,
+                                        status_t(Parcel::*read_func)(T*) const) const;
+    template<typename T, typename U>
+    status_t            unsafeWriteTypedVector(const std::vector<T>& val,
+                                               status_t(Parcel::*write_func)(U));
+    template<typename T>
+    status_t            writeNullableTypedVector(const std::unique_ptr<std::vector<T>>& val,
+                                                 status_t(Parcel::*write_func)(const T&));
+    template<typename T>
+    status_t            writeNullableTypedVector(const std::unique_ptr<std::vector<T>>& val,
+                                                 status_t(Parcel::*write_func)(T));
+    template<typename T>
+    status_t            writeTypedVector(const std::vector<T>& val,
+                                         status_t(Parcel::*write_func)(const T&));
+    template<typename T>
+    status_t            writeTypedVector(const std::vector<T>& val,
+                                         status_t(Parcel::*write_func)(T));
+
     status_t            mError;
     uint8_t*            mData;
     size_t              mDataSize;
@@ -309,7 +425,7 @@ private:
     mutable bool        mFdsKnown;
     mutable bool        mHasFds;
     bool                mAllowFds;
-    
+
     release_func        mOwner;
     void*               mOwnerCookie;
 
@@ -381,10 +497,12 @@ public:
     };
 
 private:
-    size_t mBlobAshmemSize;
+    size_t mOpenAshmemSize;
 
 public:
+    // TODO: Remove once ABI can be changed.
     size_t getBlobAshmemSize() const;
+    size_t getOpenAshmemSize() const;
 };
 
 // ---------------------------------------------------------------------------
@@ -454,6 +572,190 @@ status_t Parcel::readStrongBinder(sp<T>* val) const {
     }
 
     return ret;
+}
+
+template<typename T, typename U>
+status_t Parcel::unsafeReadTypedVector(
+        std::vector<T>* val,
+        status_t(Parcel::*read_func)(U*) const) const {
+    int32_t size;
+    status_t status = this->readInt32(&size);
+
+    if (status != OK) {
+        return status;
+    }
+
+    if (size < 0) {
+        return UNEXPECTED_NULL;
+    }
+
+    val->resize(size);
+
+    for (auto& v: *val) {
+        status = (this->*read_func)(&v);
+
+        if (status != OK) {
+            return status;
+        }
+    }
+
+    return OK;
+}
+
+template<typename T>
+status_t Parcel::readTypedVector(std::vector<T>* val,
+                                 status_t(Parcel::*read_func)(T*) const) const {
+    return unsafeReadTypedVector(val, read_func);
+}
+
+template<typename T>
+status_t Parcel::readNullableTypedVector(std::unique_ptr<std::vector<T>>* val,
+                                         status_t(Parcel::*read_func)(T*) const) const {
+    const int32_t start = dataPosition();
+    int32_t size;
+    status_t status = readInt32(&size);
+    val->reset();
+
+    if (status != OK || size < 0) {
+        return status;
+    }
+
+    setDataPosition(start);
+    val->reset(new std::vector<T>());
+
+    status = unsafeReadTypedVector(val->get(), read_func);
+
+    if (status != OK) {
+        val->reset();
+    }
+
+    return status;
+}
+
+template<typename T, typename U>
+status_t Parcel::unsafeWriteTypedVector(const std::vector<T>& val,
+                                        status_t(Parcel::*write_func)(U)) {
+    if (val.size() > std::numeric_limits<int32_t>::max()) {
+        return BAD_VALUE;
+    }
+
+    status_t status = this->writeInt32(val.size());
+
+    if (status != OK) {
+        return status;
+    }
+
+    for (const auto& item : val) {
+        status = (this->*write_func)(item);
+
+        if (status != OK) {
+            return status;
+        }
+    }
+
+    return OK;
+}
+
+template<typename T>
+status_t Parcel::writeTypedVector(const std::vector<T>& val,
+                                  status_t(Parcel::*write_func)(const T&)) {
+    return unsafeWriteTypedVector(val, write_func);
+}
+
+template<typename T>
+status_t Parcel::writeTypedVector(const std::vector<T>& val,
+                                  status_t(Parcel::*write_func)(T)) {
+    return unsafeWriteTypedVector(val, write_func);
+}
+
+template<typename T>
+status_t Parcel::writeNullableTypedVector(const std::unique_ptr<std::vector<T>>& val,
+                                          status_t(Parcel::*write_func)(const T&)) {
+    if (val.get() == nullptr) {
+        return this->writeInt32(-1);
+    }
+
+    return unsafeWriteTypedVector(*val, write_func);
+}
+
+template<typename T>
+status_t Parcel::writeNullableTypedVector(const std::unique_ptr<std::vector<T>>& val,
+                                          status_t(Parcel::*write_func)(T)) {
+    if (val.get() == nullptr) {
+        return this->writeInt32(-1);
+    }
+
+    return unsafeWriteTypedVector(*val, write_func);
+}
+
+template<typename T>
+status_t Parcel::readParcelableVector(std::vector<T>* val) const {
+    return unsafeReadTypedVector<T, Parcelable>(val, &Parcel::readParcelable);
+}
+
+template<typename T>
+status_t Parcel::readParcelableVector(std::unique_ptr<std::vector<std::unique_ptr<T>>>* val) const {
+    const int32_t start = dataPosition();
+    int32_t size;
+    status_t status = readInt32(&size);
+    val->reset();
+
+    if (status != OK || size < 0) {
+        return status;
+    }
+
+    setDataPosition(start);
+    val->reset(new std::vector<std::unique_ptr<T>>());
+
+    status = unsafeReadTypedVector(val->get(), &Parcel::readParcelable<T>);
+
+    if (status != OK) {
+        val->reset();
+    }
+
+    return status;
+}
+
+template<typename T>
+status_t Parcel::readParcelable(std::unique_ptr<T>* parcelable) const {
+    const int32_t start = dataPosition();
+    int32_t present;
+    status_t status = readInt32(&present);
+    parcelable->reset();
+
+    if (status != OK || !present) {
+        return status;
+    }
+
+    setDataPosition(start);
+    parcelable->reset(new T());
+
+    status = readParcelable(parcelable->get());
+
+    if (status != OK) {
+        parcelable->reset();
+    }
+
+    return status;
+}
+
+template<typename T>
+status_t Parcel::writeNullableParcelable(const std::unique_ptr<T>& parcelable) {
+    return writeRawNullableParcelable(parcelable.get());
+}
+
+template<typename T>
+status_t Parcel::writeParcelableVector(const std::vector<T>& val) {
+    return unsafeWriteTypedVector<T,const Parcelable&>(val, &Parcel::writeParcelable);
+}
+
+template<typename T>
+status_t Parcel::writeParcelableVector(const std::unique_ptr<std::vector<std::unique_ptr<T>>>& val) {
+    if (val.get() == nullptr) {
+        return this->writeInt32(-1);
+    }
+
+    return unsafeWriteTypedVector(*val, &Parcel::writeParcelable);
 }
 
 // ---------------------------------------------------------------------------

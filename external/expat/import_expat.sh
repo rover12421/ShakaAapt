@@ -3,12 +3,12 @@
 set -e
 
 if [ "$1" = "" ]; then
-   echo "usage: $0 expat.tar.gz"
+   echo "usage: $0 expat.tar.bz2"
    exit 1
 fi
 
 echo "Extracting $1"
-tar --extract --ungzip --strip-components=1 --file $1
+tar --extract --bzip2 --strip-components=1 --file $1
 
 echo "Saving COPYING to NOTICE"
 touch MODULE_LICENSE_BSD_LIKE
@@ -22,7 +22,7 @@ rm MANIFEST
 rm Makefile.in
 rm aclocal.m4
 rm configure
-rm configure.in
+rm configure.ac
 rm examples/elements.dsp
 rm examples/outline.dsp
 rm expat.dsw

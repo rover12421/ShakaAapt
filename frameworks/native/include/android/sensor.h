@@ -184,28 +184,42 @@ typedef struct AMetaDataEvent {
 } AMetaDataEvent;
 
 typedef struct AUncalibratedEvent {
-  union {
-    float uncalib[3];
-    struct {
-      float x_uncalib;
-      float y_uncalib;
-      float z_uncalib;
+    union {
+        float uncalib[3];
+        struct {
+            float x_uncalib;
+            float y_uncalib;
+            float z_uncalib;
+        };
     };
-  };
-  union {
-    float bias[3];
-    struct {
-      float x_bias;
-      float y_bias;
-      float z_bias;
+    union {
+        float bias[3];
+        struct {
+            float x_bias;
+            float y_bias;
+            float z_bias;
+        };
     };
-  };
 } AUncalibratedEvent;
 
 typedef struct AHeartRateEvent {
-  float bpm;
-  int8_t status;
+    float bpm;
+    int8_t status;
 } AHeartRateEvent;
+
+typedef struct ADynamicSensorEvent {
+    int32_t  connected;
+    int32_t  handle;
+} ADynamicSensorEvent;
+
+typedef struct {
+    int32_t type;
+    int32_t serial;
+    union {
+        int32_t data_int32[14];
+        float   data_float[14];
+    };
+} AAdditionalInfoEvent;
 
 /* NOTE: Must match hardware/sensors.h */
 typedef struct ASensorEvent {
@@ -229,6 +243,8 @@ typedef struct ASensorEvent {
             AUncalibratedEvent uncalibrated_magnetic;
             AMetaDataEvent meta_data;
             AHeartRateEvent heart_rate;
+            ADynamicSensorEvent dynamic_sensor_meta;
+            AAdditionalInfoEvent additional_info;
         };
         union {
             uint64_t        data[8];
@@ -375,6 +391,13 @@ int ASensorManager_destroyEventQueue(ASensorManager* manager, ASensorEventQueue*
 
 
 /*****************************************************************************/
+
+/**
+ * Enable the selected sensor with a specified sampling period and max batch report latency.
+ * Returns a negative error code on failure.
+ */
+int ASensorEventQueue_registerSensor(ASensorEventQueue* queue, ASensor const* sensor,
+        int32_t samplingPeriodUs, int maxBatchReportLatencyUs);
 
 /**
  * Enable the selected sensor. Returns a negative error code on failure.

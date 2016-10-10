@@ -14,58 +14,47 @@
 // limitations under the License.
 //
 
-LIBCXX_SRC_FILES = [
-    "src/algorithm.cpp",
-    "src/bind.cpp",
-    "src/chrono.cpp",
-    "src/condition_variable.cpp",
-    "src/debug.cpp",
-    "src/exception.cpp",
-    "src/future.cpp",
-    "src/hash.cpp",
-    "src/ios.cpp",
-    "src/iostream.cpp",
-    "src/locale.cpp",
-    "src/memory.cpp",
-    "src/mutex.cpp",
-    "src/new.cpp",
-    "src/optional.cpp",
-    "src/random.cpp",
-    "src/regex.cpp",
-    "src/shared_mutex.cpp",
-    "src/stdexcept.cpp",
-    "src/string.cpp",
-    "src/strstream.cpp",
-    "src/system_error.cpp",
-    "src/thread.cpp",
-    "src/typeinfo.cpp",
-    "src/utility.cpp",
-    "src/valarray.cpp",
-]
-
-LIBCXX_C_INCLUDES = [
-    "external/libcxxabi/include",
-]
-
-LIBCXX_LOCAL_C_INCLUDES = [
-    "include/",
-]
-
-LIBCXX_CPPFLAGS = [
-    "-std=c++14",
-    "-nostdinc++",
-    "-fexceptions",
-]
-
 // host + device static lib
 cc_library_static {
     host_supported: true,
     name: "libc++_static",
     clang: true,
-    srcs: LIBCXX_SRC_FILES,
-    include_dirs: LIBCXX_C_INCLUDES,
-    local_include_dirs: LIBCXX_LOCAL_C_INCLUDES,
-    cppflags: LIBCXX_CPPFLAGS,
+    srcs: [
+        "src/algorithm.cpp",
+        "src/any.cpp",
+        "src/bind.cpp",
+        "src/chrono.cpp",
+        "src/condition_variable.cpp",
+        "src/debug.cpp",
+        "src/exception.cpp",
+        "src/future.cpp",
+        "src/hash.cpp",
+        "src/ios.cpp",
+        "src/iostream.cpp",
+        "src/locale.cpp",
+        "src/memory.cpp",
+        "src/mutex.cpp",
+        "src/new.cpp",
+        "src/optional.cpp",
+        "src/random.cpp",
+        "src/regex.cpp",
+        "src/shared_mutex.cpp",
+        "src/stdexcept.cpp",
+        "src/string.cpp",
+        "src/strstream.cpp",
+        "src/system_error.cpp",
+        "src/thread.cpp",
+        "src/typeinfo.cpp",
+        "src/utility.cpp",
+        "src/valarray.cpp",
+    ],
+    local_include_dirs: ["include"],
+    export_include_dirs: ["include"],
+    cppflags: [
+        "-std=c++14",
+        "-nostdinc++",
+        "-fexceptions",
+    ],
     rtti: true,
     whole_static_libs: [
         "libc++abi",
@@ -93,11 +82,9 @@ cc_library_shared {
             ldflags: ["-nodefaultlibs"],
         },
         darwin: {
-            ldflags: [
-                "-Wl,-unexported_symbols_list,${SrcDir}/external/libcxx/lib/libc++unexp.exp",
-                "-Wl,-force_symbols_not_weak_list,${SrcDir}/external/libcxx/lib/notweak.exp",
-                "-Wl,-force_symbols_weak_list,${SrcDir}/external/libcxx/lib/weak.exp",
-            ],
+            unexported_symbols_list: "lib/libc++unexp.exp",
+            force_symbols_not_weak_list: "lib/notweak.exp",
+            force_symbols_weak_list: "lib/weak.exp",
         },
 
         linux: {
@@ -111,10 +98,10 @@ cc_library_shared {
 }
 
 
-// Don't build for unbundled branches
 // ANDROIDMK TRANSLATION ERROR: unsupported conditional
-// ifeq (,$(TARGET_BUILD_APPS))
-// host dynamic lib
+// ifdef LIBCXX_TESTING
+// ANDROIDMK TRANSLATION ERROR: unsupported include
+// include $(LOCAL_PATH)/buildcmds/Android.mk
 
 // ANDROIDMK TRANSLATION ERROR: endif from unsupported contitional
 // endif

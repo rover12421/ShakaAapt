@@ -324,6 +324,7 @@ const char* jniStrError(int errnum, char* buf, size_t buflen) {
 
 jobject jniCreateFileDescriptor(C_JNIEnv* env, int fd) {
     JNIEnv* e = reinterpret_cast<JNIEnv*>(env);
+    JniConstants::init(e);
     static jmethodID ctor = e->GetMethodID(JniConstants::fileDescriptorClass, "<init>", "()V");
     jobject fileDescriptor = (*env)->NewObject(e, JniConstants::fileDescriptorClass, ctor);
     // NOTE: NewObject ensures that an OutOfMemoryError will be seen by the Java
@@ -336,6 +337,7 @@ jobject jniCreateFileDescriptor(C_JNIEnv* env, int fd) {
 
 int jniGetFDFromFileDescriptor(C_JNIEnv* env, jobject fileDescriptor) {
     JNIEnv* e = reinterpret_cast<JNIEnv*>(env);
+    JniConstants::init(e);
     static jfieldID fid = e->GetFieldID(JniConstants::fileDescriptorClass, "descriptor", "I");
     if (fileDescriptor != NULL) {
         return (*env)->GetIntField(e, fileDescriptor, fid);
@@ -346,12 +348,14 @@ int jniGetFDFromFileDescriptor(C_JNIEnv* env, jobject fileDescriptor) {
 
 void jniSetFileDescriptorOfFD(C_JNIEnv* env, jobject fileDescriptor, int value) {
     JNIEnv* e = reinterpret_cast<JNIEnv*>(env);
+    JniConstants::init(e);
     static jfieldID fid = e->GetFieldID(JniConstants::fileDescriptorClass, "descriptor", "I");
     (*env)->SetIntField(e, fileDescriptor, fid, value);
 }
 
 jobject jniGetReferent(C_JNIEnv* env, jobject ref) {
     JNIEnv* e = reinterpret_cast<JNIEnv*>(env);
+    JniConstants::init(e);
     static jmethodID get = e->GetMethodID(JniConstants::referenceClass, "get", "()Ljava/lang/Object;");
     return (*env)->CallObjectMethod(e, ref, get);
 }

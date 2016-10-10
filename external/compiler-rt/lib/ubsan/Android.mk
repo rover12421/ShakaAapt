@@ -27,6 +27,8 @@ ubsan_rtl_files := \
 ubsan_cxx_rtl_files := \
     ubsan_handlers_cxx.cc \
     ubsan_type_hash.cc \
+    ubsan_type_hash_itanium.cc \
+    ubsan_type_hash_win.cc \
 
 ubsan_rtl_cppflags := \
     -fvisibility=hidden \
@@ -43,20 +45,18 @@ ubsan_rtl_c_includes := \
 ################################################################################
 # Target modules
 
-ifeq ($(TARGET_ARCH),arm)
-
 include $(CLEAR_VARS)
 LOCAL_MODULE := libubsan
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_C_INCLUDES := $(ubsan_rtl_c_includes)
 LOCAL_CPPFLAGS := $(ubsan_rtl_cppflags)
 LOCAL_SRC_FILES := $(ubsan_rtl_files)
-LOCAL_CXX_STL := none
+LOCAL_NDK_STL_VARIANT := none
+LOCAL_SDK_VERSION := 19
 LOCAL_SANITIZE := never
+LOCAL_MODULE_TARGET_ARCH := arm arm64 x86
 LOCAL_MULTILIB := both
 include $(BUILD_STATIC_LIBRARY)
-
-endif # ($(TARGET_ARCH),arm)
 
 ################################################################################
 # Host modules

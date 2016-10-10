@@ -21,6 +21,7 @@ commonSources := \
     Asset.cpp \
     AssetDir.cpp \
     AssetManager.cpp \
+    LocaleData.cpp \
     misc.cpp \
     ObbFile.cpp \
     ResourceTypes.cpp \
@@ -33,7 +34,8 @@ deviceSources := \
     $(commonSources) \
     BackupData.cpp \
     BackupHelpers.cpp \
-    CursorWindow.cpp
+    CursorWindow.cpp \
+    DisplayEventDispatcher.cpp
 
 hostSources := $(commonSources)
 
@@ -65,6 +67,7 @@ LOCAL_SHARED_LIBRARIES := \
     libbinder \
     liblog \
     libcutils \
+    libgui \
     libutils \
     libz
 

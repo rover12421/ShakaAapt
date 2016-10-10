@@ -22,6 +22,12 @@
 
 #include <stdlib.h>
 
+#include <atomic>
+#include <mutex>
+
+static std::atomic<bool> g_constants_initialized(false);
+static std::mutex g_constants_mutex;
+
 jclass JniConstants::bigDecimalClass;
 jclass JniConstants::booleanClass;
 jclass JniConstants::byteArrayClass;
@@ -34,13 +40,14 @@ jclass JniConstants::deflaterClass;
 jclass JniConstants::doubleClass;
 jclass JniConstants::errnoExceptionClass;
 jclass JniConstants::fieldClass;
-jclass JniConstants::fieldPositionIteratorClass;
 jclass JniConstants::fileDescriptorClass;
 jclass JniConstants::floatClass;
 jclass JniConstants::gaiExceptionClass;
 jclass JniConstants::inet6AddressClass;
 jclass JniConstants::inetAddressClass;
+jclass JniConstants::inetAddressHolderClass;
 jclass JniConstants::inetSocketAddressClass;
+jclass JniConstants::inetSocketAddressHolderClass;
 jclass JniConstants::inflaterClass;
 jclass JniConstants::inputStreamClass;
 jclass JniConstants::integerClass;
@@ -56,11 +63,11 @@ jclass JniConstants::outputStreamClass;
 jclass JniConstants::packetSocketAddressClass;
 jclass JniConstants::parsePositionClass;
 jclass JniConstants::patternSyntaxExceptionClass;
-jclass JniConstants::realToStringClass;
 jclass JniConstants::referenceClass;
 jclass JniConstants::shortClass;
 jclass JniConstants::socketClass;
 jclass JniConstants::socketImplClass;
+jclass JniConstants::socketTaggerClass;
 jclass JniConstants::stringClass;
 jclass JniConstants::structAddrinfoClass;
 jclass JniConstants::structFlockClass;
@@ -88,6 +95,19 @@ static jclass findClass(JNIEnv* env, const char* name) {
 }
 
 void JniConstants::init(JNIEnv* env) {
+    // Fast check
+    if (g_constants_initialized) {
+      // already initialized
+      return;
+    }
+
+    // Slightly slower check
+    std::lock_guard<std::mutex> guard(g_constants_mutex);
+    if (g_constants_initialized) {
+      // already initialized
+      return;
+    }
+
     bigDecimalClass = findClass(env, "java/math/BigDecimal");
     booleanClass = findClass(env, "java/lang/Boolean");
     byteClass = findClass(env, "java/lang/Byte");
@@ -101,12 +121,13 @@ void JniConstants::init(JNIEnv* env) {
     doubleClass = findClass(env, "java/lang/Double");
     errnoExceptionClass = findClass(env, "android/system/ErrnoException");
     fieldClass = findClass(env, "java/lang/reflect/Field");
-    fieldPositionIteratorClass = findClass(env, "libcore/icu/NativeDecimalFormat$FieldPositionIterator");
     fileDescriptorClass = findClass(env, "java/io/FileDescriptor");
     gaiExceptionClass = findClass(env, "android/system/GaiException");
     inet6AddressClass = findClass(env, "java/net/Inet6Address");
     inetAddressClass = findClass(env, "java/net/InetAddress");
+    inetAddressHolderClass = findClass(env, "java/net/InetAddress$InetAddressHolder");
     inetSocketAddressClass = findClass(env, "java/net/InetSocketAddress");
+    inetSocketAddressHolderClass = findClass(env, "java/net/InetSocketAddress$InetSocketAddressHolder");
     inflaterClass = findClass(env, "java/util/zip/Inflater");
     inputStreamClass = findClass(env, "java/io/InputStream");
     integerClass = findClass(env, "java/lang/Integer");
@@ -122,10 +143,10 @@ void JniConstants::init(JNIEnv* env) {
     packetSocketAddressClass = findClass(env, "android/system/PacketSocketAddress");
     parsePositionClass = findClass(env, "java/text/ParsePosition");
     patternSyntaxExceptionClass = findClass(env, "java/util/regex/PatternSyntaxException");
-    realToStringClass = findClass(env, "java/lang/RealToString");
     referenceClass = findClass(env, "java/lang/ref/Reference");
     shortClass = findClass(env, "java/lang/Short");
     socketClass = findClass(env, "java/net/Socket");
+    socketTaggerClass = findClass(env, "dalvik/system/SocketTagger");
     socketImplClass = findClass(env, "java/net/SocketImpl");
     stringClass = findClass(env, "java/lang/String");
     structAddrinfoClass = findClass(env, "android/system/StructAddrinfo");
@@ -142,4 +163,6 @@ void JniConstants::init(JNIEnv* env) {
     structUtsnameClass = findClass(env, "android/system/StructUtsname");
     unixSocketAddressClass = findClass(env, "android/system/UnixSocketAddress");
     zipEntryClass = findClass(env, "java/util/zip/ZipEntry");
+
+    g_constants_initialized = true;
 }

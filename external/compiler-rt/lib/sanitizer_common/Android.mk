@@ -58,8 +58,7 @@ san_cdep_files := \
     sanitizer_stoptheworld_linux_libcdep.cc \
     sanitizer_symbolizer_libcdep.cc \
     sanitizer_symbolizer_posix_libcdep.cc \
-    sanitizer_symbolizer_process_libcdep.cc \
-    sanitizer_unwind_posix_libcdep.cc \
+    sanitizer_unwind_linux_libcdep.cc \
 
 san_rtl_cppflags := \
     -fvisibility=hidden \

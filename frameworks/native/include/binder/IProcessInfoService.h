@@ -31,19 +31,15 @@ public:
                                                   /*in*/ int32_t* pids,
                                                   /*out*/ int32_t* states) = 0;
 
+    virtual status_t    getProcessStatesAndOomScoresFromPids( size_t length,
+                                                  /*in*/ int32_t* pids,
+                                                  /*out*/ int32_t* states,
+                                                  /*out*/ int32_t* scores) = 0;
+
     enum {
         GET_PROCESS_STATES_FROM_PIDS = IBinder::FIRST_CALL_TRANSACTION,
+        GET_PROCESS_STATES_AND_OOM_SCORES_FROM_PIDS,
     };
-};
-
-// ----------------------------------------------------------------------
-
-class BnProcessInfoService : public BnInterface<IProcessInfoService> {
-public:
-    virtual status_t    onTransact( uint32_t code,
-                                    const Parcel& data,
-                                    Parcel* reply,
-                                    uint32_t flags = 0);
 };
 
 // ----------------------------------------------------------------------

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/file.h"
+#include "android-base/file.h"
 
 #include <gtest/gtest.h>
 
@@ -24,7 +24,7 @@
 
 #include <string>
 
-#include "base/test_utils.h"
+#include "android-base/test_utils.h"
 
 TEST(file, ReadFileToString_ENOENT) {
   std::string s("hello");
@@ -95,4 +95,18 @@ TEST(file, WriteFully) {
 
   s.resize(1024);
   ASSERT_FALSE(android::base::ReadFully(tf.fd, &s[0], s.size()));
+}
+
+TEST(file, RemoveFileIfExist) {
+  TemporaryFile tf;
+  ASSERT_TRUE(tf.fd != -1);
+  close(tf.fd);
+  tf.fd = -1;
+  std::string err;
+  ASSERT_TRUE(android::base::RemoveFileIfExists(tf.path, &err)) << err;
+  ASSERT_TRUE(android::base::RemoveFileIfExists(tf.path));
+  TemporaryDir td;
+  ASSERT_FALSE(android::base::RemoveFileIfExists(td.path));
+  ASSERT_FALSE(android::base::RemoveFileIfExists(td.path, &err));
+  ASSERT_EQ("is not a regular or symbol link file", err);
 }

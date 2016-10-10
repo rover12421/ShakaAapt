@@ -4,8 +4,6 @@ DESROOT=.
 
 array=( \
 	bionic/libc/include \
-	build \
-	development/build \
 	external/compiler-rt \
 	external/expat \
 	external/libcxx \
@@ -18,9 +16,9 @@ array=( \
 	frameworks/base/tools/aapt \
 	frameworks/native/include \
 	libnativehelper \
-	prebuilts/clang \
+	prebuilts/clang/darwin-x86 \
+	prebuilts/clang/host \
 	prebuilts/gcc \
-	prebuilts/misc \
 	sdk/build \
 	system/core/base \
 	system/core/include \
@@ -33,11 +31,9 @@ array=( \
 for var in ${array[@]};do
 rsync -aP --delete $SRCROOT/$var/ $DESROOT/$var/ \
   --exclude .git \
-  --exclude blueprint \
-  --exclude kati \
-  --exclude soong \
   --exclude test \
   --exclude tests \
+  --exclude testdata \
   --exclude examples \
   --exclude doc \
   --exclude www \
@@ -55,7 +51,6 @@ rsync -aP --delete $SRCROOT/$var/ $DESROOT/$var/ \
   --exclude darwin-x86/x86
 done
 
-rsync -aP --delete $SRCROOT/Makefile $DESROOT/Makefile
 
 
 

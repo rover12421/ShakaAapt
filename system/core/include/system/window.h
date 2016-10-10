@@ -25,6 +25,7 @@
 #include <sys/cdefs.h>
 #include <system/graphics.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #ifndef __UNUSED
 #define __UNUSED __attribute__((__unused__))
@@ -311,6 +312,8 @@ enum {
     NATIVE_WINDOW_SET_SIDEBAND_STREAM       = 18,
     NATIVE_WINDOW_SET_BUFFERS_DATASPACE     = 19,
     NATIVE_WINDOW_SET_SURFACE_DAMAGE        = 20,   /* private */
+    NATIVE_WINDOW_SET_SHARED_BUFFER_MODE    = 21,
+    NATIVE_WINDOW_SET_AUTO_REFRESH          = 22,
 };
 
 /* parameter for NATIVE_WINDOW_[API_][DIS]CONNECT */
@@ -351,7 +354,8 @@ enum {
     NATIVE_WINDOW_TRANSFORM_INVERSE_DISPLAY = 0x08
 };
 
-/* parameter for NATIVE_WINDOW_SET_SCALING_MODE */
+/* parameter for NATIVE_WINDOW_SET_SCALING_MODE
+ * keep in sync with Surface.java in frameworks/base */
 enum {
     /* the window content is not updated (frozen) until a buffer of
      * the window size is received (enqueued)
@@ -947,6 +951,29 @@ static inline int native_window_set_surface_damage(
 {
     return window->perform(window, NATIVE_WINDOW_SET_SURFACE_DAMAGE,
             rects, numRects);
+}
+
+/*
+ * native_window_set_shared_buffer_mode(..., bool sharedBufferMode)
+ * Enable/disable shared buffer mode
+ */
+static inline int native_window_set_shared_buffer_mode(
+        struct ANativeWindow* window,
+        bool sharedBufferMode)
+{
+    return window->perform(window, NATIVE_WINDOW_SET_SHARED_BUFFER_MODE,
+            sharedBufferMode);
+}
+
+/*
+ * native_window_set_auto_refresh(..., autoRefresh)
+ * Enable/disable auto refresh when in shared buffer mode
+ */
+static inline int native_window_set_auto_refresh(
+        struct ANativeWindow* window,
+        bool autoRefresh)
+{
+    return window->perform(window, NATIVE_WINDOW_SET_AUTO_REFRESH, autoRefresh);
 }
 
 __END_DECLS

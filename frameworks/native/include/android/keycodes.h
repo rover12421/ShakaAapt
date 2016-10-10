@@ -732,12 +732,32 @@ enum {
     AKEYCODE_STEM_2 = 266,
     /** Generic stem key 3 for Wear */
     AKEYCODE_STEM_3 = 267,
+    /** Directional Pad Up-Left */
+    AKEYCODE_DPAD_UP_LEFT    = 268,
+    /** Directional Pad Down-Left */
+    AKEYCODE_DPAD_DOWN_LEFT  = 269,
+    /** Directional Pad Up-Right */
+    AKEYCODE_DPAD_UP_RIGHT   = 270,
+    /** Directional Pad Down-Right */
+    AKEYCODE_DPAD_DOWN_RIGHT = 271,
+    /** Skip forward media key */
     AKEYCODE_MEDIA_SKIP_FORWARD = 272,
+    /** Skip backward media key */
     AKEYCODE_MEDIA_SKIP_BACKWARD = 273,
+    /** Step forward media key.
+     * Steps media forward one from at a time. */
     AKEYCODE_MEDIA_STEP_FORWARD = 274,
+    /** Step backward media key.
+     * Steps media backward one from at a time. */
     AKEYCODE_MEDIA_STEP_BACKWARD = 275,
     /** Put device to sleep unless a wakelock is held. */
-    AKEYCODE_SOFT_SLEEP = 276
+    AKEYCODE_SOFT_SLEEP = 276,
+    /** Cut key. */
+    AKEYCODE_CUT = 277,
+    /** Copy key. */
+    AKEYCODE_COPY = 278,
+    /** Paste key. */
+    AKEYCODE_PASTE = 279
 
     // NOTE: If you add a new keycode here you must also add it to several other files.
     //       Refer to frameworks/base/core/java/android/view/KeyEvent.java for the full list.

@@ -23,13 +23,20 @@
 // A smart pointer that closes the given fd on going out of scope.
 // Use this when the fd is incidental to the purpose of your function,
 // but needs to be cleaned up on exit.
-class ScopedFd {
+class ScopedFd final {
 public:
     explicit ScopedFd(int fd) : fd_(fd) {
     }
+    ScopedFd() : ScopedFd(-1) {}
 
     ~ScopedFd() {
       reset();
+    }
+
+    ScopedFd(ScopedFd&& other) : fd_(other.release()) {}
+    ScopedFd& operator = (ScopedFd&& s) {
+        reset(s.release());
+        return *this;
     }
 
     int get() const {

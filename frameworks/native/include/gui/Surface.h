@@ -23,6 +23,8 @@
 #include <ui/ANativeObjectBase.h>
 #include <ui/Region.h>
 
+#include <binder/Parcelable.h>
+
 #include <utils/RefBase.h>
 #include <utils/threads.h>
 #include <utils/KeyedVector.h>
@@ -109,6 +111,31 @@ public:
     // See IGraphicBufferProducer::getConsumerName
     String8 getConsumerName() const;
 
+    // See IGraphicBufferProducer::getNextFrameNumber
+    uint64_t getNextFrameNumber() const;
+
+    /* Set the scaling mode to be used with a Surface.
+     * See NATIVE_WINDOW_SET_SCALING_MODE and its parameters
+     * in <system/window.h>. */
+    int setScalingMode(int mode);
+
+    // See IGraphicBufferProducer::setDequeueTimeout
+    status_t setDequeueTimeout(nsecs_t timeout);
+
+    /*
+     * Wait for frame number to increase past lastFrame for at most
+     * timeoutNs. Useful for one thread to wait for another unknown
+     * thread to queue a buffer.
+     */
+    bool waitForNextFrame(uint64_t lastFrame, nsecs_t timeout);
+
+    // See IGraphicBufferProducer::getLastQueuedBuffer
+    // See GLConsumer::getTransformMatrix for outTransformMatrix format
+    status_t getLastQueuedBuffer(sp<GraphicBuffer>* outBuffer,
+            sp<Fence>* outFence, float outTransformMatrix[16]);
+
+    status_t getUniqueId(uint64_t* outId) const;
+
 protected:
     virtual ~Surface();
 
@@ -156,6 +183,8 @@ private:
     int dispatchSetSidebandStream(va_list args);
     int dispatchSetBuffersDataSpace(va_list args);
     int dispatchSetSurfaceDamage(va_list args);
+    int dispatchSetSharedBufferMode(va_list args);
+    int dispatchSetAutoRefresh(va_list args);
 
 protected:
     virtual int dequeueBuffer(ANativeWindowBuffer** buffer, int* fenceFd);
@@ -173,7 +202,6 @@ protected:
     virtual int setBuffersDimensions(uint32_t width, uint32_t height);
     virtual int setBuffersUserDimensions(uint32_t width, uint32_t height);
     virtual int setBuffersFormat(PixelFormat format);
-    virtual int setScalingMode(int mode);
     virtual int setBuffersTransform(uint32_t transform);
     virtual int setBuffersStickyTransform(uint32_t transform);
     virtual int setBuffersTimestamp(int64_t timestamp);
@@ -183,6 +211,10 @@ protected:
     virtual void setSurfaceDamage(android_native_rect_t* rects, size_t numRects);
 
 public:
+    virtual int setMaxDequeuedBufferCount(int maxDequeuedBuffers);
+    virtual int setAsyncMode(bool async);
+    virtual int setSharedBufferMode(bool sharedBufferMode);
+    virtual int setAutoRefresh(bool autoRefresh);
     virtual int lock(ANativeWindow_Buffer* outBuffer, ARect* inOutDirtyBounds);
     virtual int unlockAndPost();
 
@@ -317,7 +349,59 @@ private:
     // Stores the current generation number. See setGenerationNumber and
     // IGraphicBufferProducer::setGenerationNumber for more information.
     uint32_t mGenerationNumber;
+
+    // Caches the values that have been passed to the producer.
+    bool mSharedBufferMode;
+    bool mAutoRefresh;
+
+    // If in shared buffer mode and auto refresh is enabled, store the shared
+    // buffer slot and return it for all calls to queue/dequeue without going
+    // over Binder.
+    int mSharedBufferSlot;
+
+    // This is true if the shared buffer has already been queued/canceled. It's
+    // used to prevent a mismatch between the number of queue/dequeue calls.
+    bool mSharedBufferHasBeenQueued;
+
+    Condition mQueueBufferCondition;
 };
+
+namespace view {
+
+/**
+ * A simple holder for an IGraphicBufferProducer, to match the managed-side
+ * android.view.Surface parcelable behavior.
+ *
+ * This implements android/view/Surface.aidl
+ *
+ * TODO: Convert IGraphicBufferProducer into AIDL so that it can be directly
+ * used in managed Binder calls.
+ */
+class Surface : public Parcelable {
+  public:
+
+    String16 name;
+    sp<IGraphicBufferProducer> graphicBufferProducer;
+
+    virtual status_t writeToParcel(Parcel* parcel) const override;
+    virtual status_t readFromParcel(const Parcel* parcel) override;
+
+    // nameAlreadyWritten set to true by Surface.java, because it splits
+    // Parceling itself between managed and native code, so it only wants a part
+    // of the full parceling to happen on its native side.
+    status_t writeToParcel(Parcel* parcel, bool nameAlreadyWritten) const;
+
+    // nameAlreadyRead set to true by Surface.java, because it splits
+    // Parceling itself between managed and native code, so it only wants a part
+    // of the full parceling to happen on its native side.
+    status_t readFromParcel(const Parcel* parcel, bool nameAlreadyRead);
+
+  private:
+
+    static String16 readMaybeEmptyString16(const Parcel* parcel);
+};
+
+} // namespace view
 
 }; // namespace android
 

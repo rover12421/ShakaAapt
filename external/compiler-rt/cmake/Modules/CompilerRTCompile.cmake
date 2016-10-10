@@ -1,5 +1,3 @@
-include(LLVMParseArguments)
-
 # On Windows, CMAKE_*_FLAGS are built for MSVC but we use the GCC clang.exe,
 # which uses completely different flags. Translate some common flag types, and
 # drop the rest.
@@ -32,7 +30,7 @@ endfunction()
 #               CFLAGS <list of compile flags>
 #               DEPS <list of dependencies>)
 macro(clang_compile object_file source)
-  parse_arguments(SOURCE "CFLAGS;DEPS" "" ${ARGN})
+  cmake_parse_arguments(SOURCE "" "" "CFLAGS;DEPS" ${ARGN})
   get_filename_component(source_rpath ${source} REALPATH)
   if(NOT COMPILER_RT_STANDALONE_BUILD)
     list(APPEND SOURCE_DEPS clang compiler-rt-headers)
@@ -49,6 +47,10 @@ macro(clang_compile object_file source)
 
   if (MSVC)
     translate_msvc_cflags(global_flags "${global_flags}")
+  endif()
+
+  if (APPLE)
+    set(global_flags ${OSX_SYSROOT_FLAG} ${global_flags})
   endif()
 
   # Ignore unknown warnings. CMAKE_CXX_FLAGS may contain GCC-specific options
@@ -74,7 +76,7 @@ endmacro()
 macro(clang_compiler_add_cxx_check)
   if (APPLE)
     set(CMD
-      "echo '#include <iostream>' | ${COMPILER_RT_TEST_COMPILER} -E -x c++ - > /dev/null"
+      "echo '#include <iostream>' | ${COMPILER_RT_TEST_COMPILER} ${OSX_SYSROOT_FLAG} -E -x c++ - > /dev/null"
       "if [ $? != 0 ] "
       "  then echo"
       "  echo 'Your just-built clang cannot find C++ headers, which are needed to build and run compiler-rt tests.'"

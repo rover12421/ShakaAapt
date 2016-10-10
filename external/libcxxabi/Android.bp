@@ -14,66 +14,47 @@
 // limitations under the License.
 //
 
-LIBCXXABI_SRC_FILES = [
-    "src/abort_message.cpp",
-    "src/cxa_aux_runtime.cpp",
-    "src/cxa_default_handlers.cpp",
-    "src/cxa_demangle.cpp",
-    "src/cxa_exception.cpp",
-    "src/cxa_exception_storage.cpp",
-    "src/cxa_guard.cpp",
-    "src/cxa_handlers.cpp",
-    "src/cxa_new_delete.cpp",
-    "src/cxa_personality.cpp",
-    "src/cxa_thread_atexit.cpp",
-    "src/cxa_unexpected.cpp",
-    "src/cxa_vector.cpp",
-    "src/cxa_virtual.cpp",
-    "src/exception.cpp",
-    "src/private_typeinfo.cpp",
-    "src/stdexcept.cpp",
-    "src/typeinfo.cpp",
-]
-
-LIBCXXABI_INCLUDES = [
-    "external/libcxx/include",
-    "external/libunwind_llvm/include",
-]
-
-LIBCXXABI_LOCAL_INCLUDES = [
-    "include",
-]
-
-LIBCXXABI_CPPFLAGS = [
-    "-std=c++14",
-    "-fexceptions",
-    "-Wall",
-    "-Wextra",
-    "-Wno-unused-function",
-    "-Werror",
-]
-
 cc_library_static {
     name: "libc++abi",
     host_supported: true,
     clang: true,
-    srcs: LIBCXXABI_SRC_FILES,
-    include_dirs: LIBCXXABI_INCLUDES,
-    local_include_dirs: LIBCXXABI_LOCAL_INCLUDES,
-    cppflags: LIBCXXABI_CPPFLAGS,
+    srcs: [
+        "src/abort_message.cpp",
+        "src/cxa_aux_runtime.cpp",
+        "src/cxa_default_handlers.cpp",
+        "src/cxa_demangle.cpp",
+        "src/cxa_exception.cpp",
+        "src/cxa_exception_storage.cpp",
+        "src/cxa_guard.cpp",
+        "src/cxa_handlers.cpp",
+        "src/cxa_new_delete.cpp",
+        "src/cxa_personality.cpp",
+        "src/cxa_thread_atexit.cpp",
+        "src/cxa_unexpected.cpp",
+        "src/cxa_vector.cpp",
+        "src/cxa_virtual.cpp",
+        "src/exception.cpp",
+        "src/private_typeinfo.cpp",
+        "src/stdexcept.cpp",
+        "src/typeinfo.cpp",
+    ],
+    include_dirs: ["external/libcxx/include"],
+    local_include_dirs:  ["include"],
+    export_include_dirs: ["include"],
+    cppflags: [
+        "-std=c++14",
+        "-fexceptions",
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-function",
+        "-Werror",
+    ],
     sanitize: ["never"],
     stl: "none",
     rtti: true,
     arch: {
         arm: {
-            // When src/cxa_exception.cpp is compiled with Clang assembler
-            // __cxa_end_cleanup_impl, although marked as used, was discarded
-            // since it is used only in embedded assembly code.
-            // This caused the following warning when linking libc++.so:
-            // libc++_static.a(cxa_exception.o)(.text.__cxa_end_cleanup+0x2):
-            // warning: relocation refers to discarded section
-            // See also http://llvm.org/bugs/show_bug.cgi?id=21292.
-            clang_cflags: ["-no-integrated-as"],
+            include_dirs: ["external/libunwind_llvm/include"],
             cppflags: ["-DLIBCXXABI_USE_LLVM_UNWINDER=1"],
         },
         arm64: {

@@ -29,6 +29,15 @@
 #ifndef _SYS_TIMEX_H_
 #define _SYS_TIMEX_H_
 
+#include <sys/cdefs.h>
+#include <sys/types.h>
 #include <linux/timex.h>
+
+__BEGIN_DECLS
+
+int adjtimex(struct timex*);
+int clock_adjtime(clockid_t, struct timex*);
+
+__END_DECLS
 
 #endif /* _SYS_TIMEX_H_ */

@@ -39,7 +39,6 @@
 struct JniConstants {
     static void init(JNIEnv* env);
 
-    static jclass bidiRunClass;
     static jclass bigDecimalClass;
     static jclass booleanClass;
     static jclass byteArrayClass;
@@ -52,13 +51,14 @@ struct JniConstants {
     static jclass doubleClass;
     static jclass errnoExceptionClass;
     static jclass fieldClass;
-    static jclass fieldPositionIteratorClass;
     static jclass fileDescriptorClass;
     static jclass floatClass;
     static jclass gaiExceptionClass;
     static jclass inet6AddressClass;
     static jclass inetAddressClass;
+    static jclass inetAddressHolderClass;
     static jclass inetSocketAddressClass;
+    static jclass inetSocketAddressHolderClass;
     static jclass inflaterClass;
     static jclass inputStreamClass;
     static jclass integerClass;
@@ -74,11 +74,11 @@ struct JniConstants {
     static jclass packetSocketAddressClass;
     static jclass parsePositionClass;
     static jclass patternSyntaxExceptionClass;
-    static jclass realToStringClass;
     static jclass referenceClass;
     static jclass shortClass;
     static jclass socketClass;
     static jclass socketImplClass;
+    static jclass socketTaggerClass;
     static jclass stringClass;
     static jclass structAddrinfoClass;
     static jclass structFlockClass;

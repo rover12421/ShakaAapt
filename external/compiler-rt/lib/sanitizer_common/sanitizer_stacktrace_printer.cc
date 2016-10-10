@@ -10,13 +10,14 @@
 // This file is shared between sanitizers' run-time libraries.
 //
 //===----------------------------------------------------------------------===//
+
 #include "sanitizer_stacktrace_printer.h"
 
 namespace __sanitizer {
 
 static const char *StripFunctionName(const char *function, const char *prefix) {
-  if (function == 0) return 0;
-  if (prefix == 0) return function;
+  if (!function) return nullptr;
+  if (!prefix) return function;
   uptr prefix_len = internal_strlen(prefix);
   if (0 == internal_strncmp(function, prefix, prefix_len))
     return function + prefix_len;
@@ -99,7 +100,9 @@ void RenderFrame(InternalScopedString *buffer, const char *format, int frame_no,
       break;
     case 'M':
       // Module basename and offset, or PC.
-      if (info.module)
+      if (info.address & kExternalPCBit)
+        {} // There PCs are not meaningful.
+      else if (info.module)
         buffer->append("(%s+%p)", StripModuleName(info.module),
                        (void *)info.module_offset);
       else
@@ -138,4 +141,4 @@ void RenderModuleLocation(InternalScopedString *buffer, const char *module,
                  offset);
 }
 
-}  // namespace __sanitizer
+} // namespace __sanitizer

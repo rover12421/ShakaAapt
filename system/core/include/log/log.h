@@ -484,15 +484,19 @@ extern "C" {
  */
 
 /*
- * Event log entry types.  These must match up with the declarations in
- * java/android/android/util/EventLog.java.
+ * Event log entry types.
  */
 typedef enum {
-    EVENT_TYPE_INT      = 0,
-    EVENT_TYPE_LONG     = 1,
-    EVENT_TYPE_STRING   = 2,
-    EVENT_TYPE_LIST     = 3,
-    EVENT_TYPE_FLOAT    = 4,
+    /* Special markers for android_log_list_element type */
+    EVENT_TYPE_LIST_STOP = '\n', /* declare end of list  */
+    EVENT_TYPE_UNKNOWN   = '?',  /* protocol error       */
+
+    /* must match with declaration in java/android/android/util/EventLog.java */
+    EVENT_TYPE_INT       = 0,    /* uint32_t */
+    EVENT_TYPE_LONG      = 1,    /* uint64_t */
+    EVENT_TYPE_STRING    = 2,
+    EVENT_TYPE_LIST      = 3,
+    EVENT_TYPE_FLOAT     = 4,
 } AndroidEventLogType;
 #define sizeof_AndroidEventLogType sizeof(typeof_AndroidEventLogType)
 #define typeof_AndroidEventLogType unsigned char
@@ -522,7 +526,87 @@ typedef enum {
 #define LOG_EVENT_STRING(_tag, _value)                                      \
         (void) __android_log_bswrite(_tag, _value);
 #endif
-/* TODO: something for LIST */
+
+typedef enum log_id {
+    LOG_ID_MIN = 0,
+
+#ifndef LINT_RLOG
+    LOG_ID_MAIN = 0,
+#endif
+    LOG_ID_RADIO = 1,
+#ifndef LINT_RLOG
+    LOG_ID_EVENTS = 2,
+    LOG_ID_SYSTEM = 3,
+    LOG_ID_CRASH = 4,
+    LOG_ID_SECURITY = 5,
+    LOG_ID_KERNEL = 6, /* place last, third-parties can not use it */
+#endif
+
+    LOG_ID_MAX
+} log_id_t;
+#define sizeof_log_id_t sizeof(typeof_log_id_t)
+#define typeof_log_id_t unsigned char
+
+/* For manipulating lists of events. */
+
+#define ANDROID_MAX_LIST_NEST_DEPTH 8
+
+/*
+ * The opaque context used to manipulate lists of events.
+ */
+typedef struct android_log_context_internal *android_log_context;
+
+/*
+ * Elements returned when reading a list of events.
+ */
+typedef struct {
+    AndroidEventLogType type;
+    uint16_t complete;
+    uint16_t len;
+    union {
+        int32_t int32;
+        int64_t int64;
+        char *string;
+        float float32;
+    } data;
+} android_log_list_element;
+
+/*
+ * Creates a context associated with an event tag to write elements to
+ * the list of events.
+ */
+android_log_context create_android_logger(uint32_t tag);
+
+/* All lists must be braced by a begin and end call */
+/*
+ * NB: If the first level braces are missing when specifying multiple
+ *     elements, we will manufacturer a list to embrace it for your API
+ *     convenience. For a single element, it will remain solitary.
+ */
+int android_log_write_list_begin(android_log_context ctx);
+int android_log_write_list_end(android_log_context ctx);
+
+int android_log_write_int32(android_log_context ctx, int32_t value);
+int android_log_write_int64(android_log_context ctx, int64_t value);
+int android_log_write_string8(android_log_context ctx, const char *value);
+int android_log_write_string8_len(android_log_context ctx,
+                                  const char *value, size_t maxlen);
+int android_log_write_float32(android_log_context ctx, float value);
+
+/* Submit the composed list context to the specified logger id */
+/* NB: LOG_ID_EVENTS and LOG_ID_SECURITY only valid binary buffers */
+int android_log_write_list(android_log_context ctx, log_id_t id);
+
+/*
+ * Creates a context from a raw buffer representing a list of events to be read.
+ */
+android_log_context create_android_log_parser(const char *msg, size_t len);
+
+android_log_list_element android_log_read_next(android_log_context ctx);
+android_log_list_element android_log_peek_next(android_log_context ctx);
+
+/* Finished with reader or writer context */
+int android_log_destroy(android_log_context *ctx);
 
 /*
  * ===========================================================================
@@ -585,38 +669,15 @@ typedef enum {
     (__android_log_is_loggable(prio, tag, ANDROID_LOG_VERBOSE) != 0)
 #endif
 
-// TODO: remove these prototypes and their users
-#define android_writevLog(vec,num) do{}while(0)
-#define android_write1Log(str,len) do{}while (0)
-#define android_setMinPriority(tag, prio) do{}while(0)
-//#define android_logToCallback(func) do{}while(0)
-#define android_logToFile(tag, file) (0)
-#define android_logToFd(tag, fd) (0)
-
-typedef enum log_id {
-    LOG_ID_MIN = 0,
-
-#ifndef LINT_RLOG
-    LOG_ID_MAIN = 0,
-#endif
-    LOG_ID_RADIO = 1,
-#ifndef LINT_RLOG
-    LOG_ID_EVENTS = 2,
-    LOG_ID_SYSTEM = 3,
-    LOG_ID_CRASH = 4,
-    LOG_ID_KERNEL = 5,
-#endif
-
-    LOG_ID_MAX
-} log_id_t;
-#define sizeof_log_id_t sizeof(typeof_log_id_t)
-#define typeof_log_id_t unsigned char
-
 /*
  * Use the per-tag properties "log.tag.<tagname>" to generate a runtime
- * result of non-zero to expose a log.
+ * result of non-zero to expose a log. prio is ANDROID_LOG_VERBOSE to
+ * ANDROID_LOG_FATAL. default_prio if no property. Undefined behavior if
+ * any other value.
  */
-int __android_log_is_loggable(int prio, const char *tag, int def);
+int __android_log_is_loggable(int prio, const char *tag, int default_prio);
+
+int __android_log_security(); /* Device Owner is present */
 
 int __android_log_error_write(int tag, const char *subTag, int32_t uid, const char *data,
                               uint32_t dataLen);

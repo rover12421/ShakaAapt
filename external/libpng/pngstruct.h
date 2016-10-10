@@ -1,11 +1,10 @@
 
 /* pngstruct.h - header file for PNG reference library
  *
- * Copyright (c) 1998-2013 Glenn Randers-Pehrson
+ * Last changed in libpng 1.6.18 [July 23, 2015]
+ * Copyright (c) 1998-2002,2004,2006-2015 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
- *
- * Last changed in libpng 1.6.1 [March 28, 2013]
  *
  * This code is released under the libpng license.
  * For conditions of distribution and use, see the disclaimer
@@ -101,7 +100,7 @@ typedef struct png_XYZ
 #endif /* COLORSPACE */
 
 #if defined(PNG_COLORSPACE_SUPPORTED) || defined(PNG_GAMMA_SUPPORTED)
-/* A colorspace is all the above plus, potentially, profile information,
+/* A colorspace is all the above plus, potentially, profile information;
  * however at present libpng does not use the profile internally so it is only
  * stored in the png_info struct (if iCCP is supported.)  The rendering intent
  * is retained here and is checked.
@@ -141,50 +140,6 @@ typedef const png_colorspace * PNG_RESTRICT png_const_colorspacerp;
 #define PNG_COLORSPACE_CANCEL(flags)        (0xffff ^ (flags))
 #endif /* COLORSPACE || GAMMA */
 
-#ifdef PNG_INDEX_SUPPORTED
-/* png_line_index_struct records an index point, where we impose an index point
- * to be located at the beginning of a line for simplifying the implementation.
- */
-typedef struct png_line_index_struct
-{
-   // state of the lz decoder
-   z_streamp   z_state;
-
-   // the IDAT header position of the chunk, which the index point is in
-   png_uint_32  stream_idat_position;
-
-   // we intend to record the offset of the index point in the chunk,
-   // but we record the number of remaining bytes in the chunk after the
-   // index point. That's because PNG processes a chunk this way.
-   png_uint_32  bytes_left_in_idat;
-
-   // decompressed data of the previous row
-   png_bytep   prev_row;
-} png_line_index;
-typedef png_line_index FAR * png_line_indexp;
-
-typedef struct png_index_struct
-{
-   // A temporary variable used when we build the index. The variable records
-   // the IDAT header position of the last chunk read in so far.
-   png_uint_32  stream_idat_position;
-
-   // line index information about each passes
-
-   // the number of index points in each pass
-   png_uint_32  size[7];
-
-   // the line span of two index points of each pass
-   png_uint_32  step[7];
-
-   // the index points of each pass
-   png_line_indexp  *pass_line_index[7];
-} png_index;
-typedef png_index FAR * png_indexp;
-
-#define INDEX_SAMPLE_SIZE 254
-#endif
-
 struct png_struct_def
 {
 #ifdef PNG_SETJMP_SUPPORTED
@@ -200,9 +155,6 @@ struct png_struct_def
    png_voidp error_ptr;       /* user supplied struct for error functions */
    png_rw_ptr write_data_fn;  /* function for writing output data */
    png_rw_ptr read_data_fn;   /* function for reading input data */
-#ifdef PNG_INDEX_SUPPORTED
-   png_seek_ptr seek_data_fn; /* function for seeking input data */
-#endif
    png_voidp io_ptr;          /* ptr to application struct for I/O functions */
 
 #ifdef PNG_READ_USER_TRANSFORM_SUPPORTED
@@ -267,16 +219,18 @@ struct png_struct_def
    png_uint_32 row_number;    /* current row in interlace pass */
    png_uint_32 chunk_name;    /* PNG_CHUNK() id of current chunk */
    png_bytep prev_row;        /* buffer to save previous (unfiltered) row.
-                               * This is a pointer into big_prev_row
+                               * While reading this is a pointer into
+                               * big_prev_row; while writing it is separately
+                               * allocated if needed.
                                */
    png_bytep row_buf;         /* buffer to save current (unfiltered) row.
-                               * This is a pointer into big_row_buf
+                               * While reading, this is a pointer into
+                               * big_row_buf; while writing it is separately
+                               * allocated.
                                */
-#ifdef PNG_WRITE_SUPPORTED
-   png_bytep sub_row;         /* buffer to save "sub" row when filtering */
-   png_bytep up_row;          /* buffer to save "up" row when filtering */
-   png_bytep avg_row;         /* buffer to save "avg" row when filtering */
-   png_bytep paeth_row;       /* buffer to save "Paeth" row when filtering */
+#ifdef PNG_WRITE_FILTER_SUPPORTED
+   png_bytep try_row;    /* buffer to save trial row when filtering */
+   png_bytep tst_row;    /* buffer to save best trial row when filtering */
 #endif
    png_size_t info_rowbytes;  /* Added in 1.5.4: cache of updated row bytes */
 
@@ -309,6 +263,9 @@ struct png_struct_def
                               /* pixel depth used for the row buffers */
    png_byte transformed_pixel_depth;
                               /* pixel depth after read/write transforms */
+#if PNG_ZLIB_VERNUM >= 0x1240
+   png_byte zstream_start;    /* at start of an input zlib stream */
+#endif /* Zlib >= 1.2.4 */
 #if defined(PNG_READ_FILLER_SUPPORTED) || defined(PNG_WRITE_FILLER_SUPPORTED)
    png_uint_16 filler;           /* filler bytes for pixel expansion */
 #endif
@@ -321,7 +278,7 @@ struct png_struct_def
 #ifdef PNG_READ_GAMMA_SUPPORTED
    png_color_16 background_1; /* background normalized to gamma 1.0 */
 #endif
-#endif /* PNG_bKGD_SUPPORTED */
+#endif /* bKGD */
 
 #ifdef PNG_WRITE_FLUSH_SUPPORTED
    png_flush_ptr output_flush_fn; /* Function for flushing output */
@@ -378,7 +335,7 @@ struct png_struct_def
    int process_mode;                 /* what push library is currently doing */
    int cur_palette;                  /* current push library palette index */
 
-#endif /* PNG_PROGRESSIVE_READ_SUPPORTED */
+#endif /* PROGRESSIVE_READ */
 
 #if defined(__TURBOC__) && !defined(_Windows) && !defined(__FLAT__)
 /* For the Borland special 64K segment handler */
@@ -394,17 +351,7 @@ struct png_struct_def
    png_bytep quantize_index; /* index translation for palette files */
 #endif
 
-#ifdef PNG_WRITE_WEIGHTED_FILTER_SUPPORTED
-   png_byte heuristic_method;        /* heuristic for row filter selection */
-   png_byte num_prev_filters;        /* number of weights for previous rows */
-   png_bytep prev_filters;           /* filter type(s) of previous row(s) */
-   png_uint_16p filter_weights;      /* weight(s) for previous line(s) */
-   png_uint_16p inv_filter_weights;  /* 1/weight(s) for previous line(s) */
-   png_uint_16p filter_costs;        /* relative filter calculation cost */
-   png_uint_16p inv_filter_costs;    /* 1/relative filter calculation cost */
-#endif
-
-   /* Options */
+/* Options */
 #ifdef PNG_SET_OPTION_SUPPORTED
    png_byte options;           /* On/off state (up to 4 options) */
 #endif
@@ -532,11 +479,5 @@ struct png_struct_def
    png_colorspace   colorspace;
 #endif
 #endif
-
-#ifdef PNG_INDEX_SUPPORTED
-   png_indexp index;
-   png_uint_32 total_data_read;
-#endif
-
 };
 #endif /* PNGSTRUCT_H */

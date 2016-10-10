@@ -110,12 +110,7 @@ public:
     // when the current buffer is released by updateTexImage(). Multiple
     // fences can be set for a given buffer; they will be merged into a single
     // union fence.
-    void setReleaseFence(const sp<Fence>& fence);
-
-    // setDefaultMaxBufferCount sets the default limit on the maximum number
-    // of buffers that will be allocated at one time. The image producer may
-    // override the limit.
-    status_t setDefaultMaxBufferCount(int bufferCount);
+    virtual void setReleaseFence(const sp<Fence>& fence);
 
     // getTransformMatrix retrieves the 4x4 texture coordinate transform matrix
     // associated with the texture image set by the most recent call to
@@ -136,6 +131,12 @@ public:
     // directly to OpenGL ES via the glLoadMatrixf or glUniformMatrix4fv
     // functions.
     void getTransformMatrix(float mtx[16]);
+
+    // Computes the transform matrix documented by getTransformMatrix
+    // from the BufferItem sub parts.
+    static void computeTransformMatrix(float outTransform[16],
+            const sp<GraphicBuffer>& buf, const Rect& cropRect,
+            uint32_t transform, bool filtering);
 
     // getTimestamp retrieves the timestamp associated with the texture image
     // set by the most recent call to updateTexImage.
@@ -201,6 +202,7 @@ public:
     status_t setDefaultBufferDataSpace(android_dataspace defaultDataSpace);
     status_t setConsumerUsageBits(uint32_t usage);
     status_t setTransformHint(uint32_t hint);
+    status_t setMaxAcquiredBufferCount(int maxAcquiredBuffers);
 
     // detachFromContext detaches the GLConsumer from the calling thread's
     // current OpenGL ES context.  This context must be the same as the context
@@ -257,10 +259,25 @@ protected:
 
     static bool isExternalFormat(PixelFormat format);
 
+    struct PendingRelease {
+        PendingRelease() : isPending(false), currentTexture(-1),
+                graphicBuffer(), display(nullptr), fence(nullptr) {}
+
+        bool isPending;
+        int currentTexture;
+        sp<GraphicBuffer> graphicBuffer;
+        EGLDisplay display;
+        EGLSyncKHR fence;
+    };
+
     // This releases the buffer in the slot referenced by mCurrentTexture,
     // then updates state to refer to the BufferItem, which must be a
-    // newly-acquired buffer.
-    status_t updateAndReleaseLocked(const BufferItem& item);
+    // newly-acquired buffer. If pendingRelease is not null, the parameters
+    // which would have been passed to releaseBufferLocked upon the successful
+    // completion of the method will instead be returned to the caller, so that
+    // it may call releaseBufferLocked itself later.
+    status_t updateAndReleaseLocked(const BufferItem& item,
+            PendingRelease* pendingRelease = nullptr);
 
     // Binds mTexName and the current buffer to mTexTarget.  Uses
     // mCurrentTexture if it's set, mCurrentTextureImage if not.  If the

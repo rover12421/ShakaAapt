@@ -325,6 +325,10 @@ define get-libcompiler-rt-x86_64-source-files
       $(libcompiler_rt_x86_64_SRC_FILES),x86_64)
 endef
 
+libcompiler_rt_common_CFLAGS := \
+  -Wno-unused-parameter \
+  -Werror
+
 #=====================================================================
 # Device Static Library: libcompiler_rt-extras
 #=====================================================================
@@ -334,8 +338,11 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libcompiler_rt-extras
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+LOCAL_CFLAGS := $(libcompiler_rt_common_CFLAGS)
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(libcompiler_rt_extras_SRC_FILES)
+LOCAL_SRC_FILES_mips += lib/builtins/clear_cache.c
+LOCAL_SRC_FILES_mips64 += lib/builtins/clear_cache.c
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 LOCAL_SANITIZE := never
 LOCAL_CXX_STL := none
@@ -349,6 +356,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcompiler_rt-extras
+LOCAL_CFLAGS := $(libcompiler_rt_common_CFLAGS)
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(libcompiler_rt_extras_SRC_FILES)
 LOCAL_SANITIZE := never
@@ -368,8 +376,9 @@ ifneq ($(WITHOUT_TARGET_CLANG), true)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcompiler_rt
+LOCAL_CFLAGS := $(libcompiler_rt_common_CFLAGS)
 LOCAL_CFLAGS_arm += -D__ARM_EABI__
-LOCAL_CFLAGS_mips64 += -DCRT_HAS_128BIT -DCRT_LDBL_128BIT
+LOCAL_CFLAGS_mips64 += -DCRT_HAS_128BIT
 LOCAL_ASFLAGS := -integrated-as
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := lib/builtins/enable_execute_stack.c
@@ -385,6 +394,13 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 LOCAL_SANITIZE := never
 LOCAL_CXX_STL := none
 
+# These don't actually link, but are required to get exported headers
+LOCAL_STATIC_LIBRARIES_arm64 := libunwindbacktrace
+LOCAL_STATIC_LIBRARIES_mips := libunwindbacktrace
+LOCAL_STATIC_LIBRARIES_mips64 := libunwindbacktrace
+LOCAL_STATIC_LIBRARIES_x86 := libunwindbacktrace
+LOCAL_STATIC_LIBRARIES_x86_64 := libunwindbacktrace
+
 include $(BUILD_STATIC_LIBRARY)
 
 #=====================================================================
@@ -394,6 +410,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libcompiler_rt
+LOCAL_CFLAGS := $(libcompiler_rt_common_CFLAGS)
 LOCAL_ASFLAGS := -integrated-as
 LOCAL_CLANG := true
 LOCAL_SRC_FILES := $(call get-libcompiler-rt-source-files,x86_64)
@@ -405,36 +422,11 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 LOCAL_MULTILIB := both
 LOCAL_CXX_STL := none
 
-include $(BUILD_HOST_STATIC_LIBRARY)
-
-#=====================================================================
-# Host Static Library: libprofile_rt
-#=====================================================================
-
-include $(CLEAR_VARS)
-
-LOCAL_MODULE = libprofile_rt
-LOCAL_SRC_FILES = lib/profile/GCDAProfiling.c
-LOCAL_SANITIZE := never
-LOCAL_MULTILIB := both
-LOCAL_CXX_STL := none
+# These don't actually link, but are required to get exported headers
+LOCAL_STATIC_LIBRARIES_linux := libunwindbacktrace
+LOCAL_STATIC_LIBRARIES_windows := libunwindbacktrace
 
 include $(BUILD_HOST_STATIC_LIBRARY)
-
-#=====================================================================
-# Device Static Library: libprofile_rt
-#=====================================================================
-
-include $(CLEAR_VARS)
-
-LOCAL_MODULE = libprofile_rt
-LOCAL_CLANG := true
-LOCAL_SRC_FILES = lib/profile/GCDAProfiling.c
-LOCAL_SANITIZE := never
-LOCAL_MULTILIB := both
-LOCAL_CXX_STL := none
-
-include $(BUILD_STATIC_LIBRARY)
 
 #=====================================================================
 # Device Shared Library: libcompiler_rt

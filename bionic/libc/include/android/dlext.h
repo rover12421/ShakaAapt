@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2014 The Android Open Source Project
-
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -129,35 +129,6 @@ typedef struct {
 } android_dlextinfo;
 
 extern void* android_dlopen_ext(const char* filename, int flag, const android_dlextinfo* extinfo);
-
-/*
- * Initializes public namespace. The path is the list of sonames
- * separated by colon. Example: "libc.so:libm.so:libdl.so".
- *
- * The libraries in this list should be loaded prior to this call.
- */
-extern bool android_init_public_namespace(const char* path);
-
-/*
- * Creates new linker namespace.
- * ld_library_path and default_library_path represent the search path
- * for the libraries in the namespace.
- *
- * The libraries in the namespace are searched by folowing order:
- * 1. ld_library_path (Think of this as namespace-local LD_LIBRARY_PATH)
- * 2. In directories specified by DT_RUNPATH of the "needed by" binary.
- * 3. deault_library_path (This of this as namespace-local default library path)
- *
- * When is_isolated is true the resulted namespace requires all of the libraries
- * to be on the search path; the search_path is ld_library_path:default_library_path.
- *
- * If a library or any of its dependencies are outside of the search path and not
- * part of the public namespace dlopen will fail.
- */
-extern struct android_namespace_t* android_create_namespace(const char* name,
-                                                            const char* ld_library_path,
-                                                            const char* default_library_path,
-                                                            bool is_isolated);
 
 __END_DECLS
 

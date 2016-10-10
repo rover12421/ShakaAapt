@@ -150,6 +150,18 @@ namespace __sanitizer {
   };
 
   const unsigned old_sigset_t_sz = sizeof(unsigned long);
+
+  struct __sanitizer_sem_t {
+#if SANITIZER_ANDROID && defined(_LP64)
+    int data[4];
+#elif SANITIZER_ANDROID && !defined(_LP64)
+    int data;
+#elif SANITIZER_LINUX
+    uptr data[4];
+#elif SANITIZER_FREEBSD
+    u32 data[4];
+#endif
+  };
 #endif // SANITIZER_LINUX || SANITIZER_FREEBSD
 
 #if SANITIZER_ANDROID
@@ -609,6 +621,8 @@ namespace __sanitizer {
     const void *dlpi_phdr;
     short dlpi_phnum;
   };
+
+  extern unsigned struct_ElfW_Phdr_sz;
 #endif
 
   struct __sanitizer_addrinfo {
@@ -721,10 +735,12 @@ namespace __sanitizer {
 #endif
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID && \
-  (defined(__i386) || defined(__x86_64) || defined(__mips64))
+  (defined(__i386) || defined(__x86_64) || defined(__mips64) || \
+    defined(__powerpc64__) || defined(__aarch64__) || defined(__arm__))
   extern unsigned struct_user_regs_struct_sz;
   extern unsigned struct_user_fpregs_struct_sz;
   extern unsigned struct_user_fpxregs_struct_sz;
+  extern unsigned struct_user_vfpregs_struct_sz;
 
   extern int ptrace_peektext;
   extern int ptrace_peekdata;
@@ -735,6 +751,8 @@ namespace __sanitizer {
   extern int ptrace_setfpregs;
   extern int ptrace_getfpxregs;
   extern int ptrace_setfpxregs;
+  extern int ptrace_getvfpregs;
+  extern int ptrace_setvfpregs;
   extern int ptrace_getsiginfo;
   extern int ptrace_setsiginfo;
   extern int ptrace_getregset;
@@ -778,6 +796,20 @@ struct __sanitizer_obstack {
   char *next_free;
   uptr more_fields[7];
 };
+
+typedef uptr (*__sanitizer_cookie_io_read)(void *cookie, char *buf, uptr size);
+typedef uptr (*__sanitizer_cookie_io_write)(void *cookie, const char *buf,
+                                            uptr size);
+typedef int (*__sanitizer_cookie_io_seek)(void *cookie, u64 *offset,
+                                          int whence);
+typedef int (*__sanitizer_cookie_io_close)(void *cookie);
+
+struct __sanitizer_cookie_io_functions_t {
+  __sanitizer_cookie_io_read read;
+  __sanitizer_cookie_io_write write;
+  __sanitizer_cookie_io_seek seek;
+  __sanitizer_cookie_io_close close;
+};
 #endif
 
 #define IOC_NRBITS 8
@@ -814,12 +846,12 @@ struct __sanitizer_obstack {
 #define IOC_NR(nr) (((nr) >> IOC_NRSHIFT) & IOC_NRMASK)
 #define IOC_SIZE(nr) (((nr) >> IOC_SIZESHIFT) & IOC_SIZEMASK)
 
-  extern unsigned struct_arpreq_sz;
   extern unsigned struct_ifreq_sz;
   extern unsigned struct_termios_sz;
   extern unsigned struct_winsize_sz;
 
 #if SANITIZER_LINUX
+  extern unsigned struct_arpreq_sz;
   extern unsigned struct_cdrom_msf_sz;
   extern unsigned struct_cdrom_multisession_sz;
   extern unsigned struct_cdrom_read_audio_sz;

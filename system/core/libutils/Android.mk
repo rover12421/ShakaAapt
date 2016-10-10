@@ -22,7 +22,6 @@ commonSources:= \
 	Log.cpp \
 	NativeHandle.cpp \
 	Printer.cpp \
-	ProcessCallStack.cpp \
 	PropertyMap.cpp \
 	RefBase.cpp \
 	SharedBuffer.cpp \
@@ -44,7 +43,7 @@ host_commonCflags := -DLIBUTILS_NATIVE=1 $(TOOL_CFLAGS) -Werror
 # =====================================================
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES:= $(commonSources)
-LOCAL_SRC_FILES_linux := Looper.cpp
+LOCAL_SRC_FILES_linux := Looper.cpp ProcessCallStack.cpp
 LOCAL_CFLAGS_darwin := -Wno-unused-parameter
 LOCAL_MODULE:= libutils
 LOCAL_STATIC_LIBRARIES := liblog
@@ -67,12 +66,13 @@ LOCAL_SRC_FILES:= \
 	$(commonSources) \
 	BlobCache.cpp \
 	Looper.cpp \
+	ProcessCallStack.cpp \
 	Trace.cpp
 
 ifeq ($(TARGET_ARCH),mips)
 LOCAL_CFLAGS += -DALIGN_DOUBLE
 endif
-LOCAL_CFLAGS += -Werror
+LOCAL_CFLAGS += -Werror -fvisibility=protected
 
 LOCAL_STATIC_LIBRARIES := \
 	libcutils \
@@ -106,19 +106,16 @@ LOCAL_CLANG := true
 LOCAL_SANITIZE := integer
 include $(BUILD_SHARED_LIBRARY)
 
-# Include subdirectory makefiles
-# ============================================================
-
 include $(CLEAR_VARS)
 LOCAL_MODULE := SharedBufferTest
-LOCAL_STATIC_LIBRARIES := libutils libcutils
+LOCAL_STATIC_LIBRARIES := libutils
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_SRC_FILES := SharedBufferTest.cpp
 include $(BUILD_NATIVE_TEST)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := SharedBufferTest
-LOCAL_STATIC_LIBRARIES := libutils libcutils
+LOCAL_STATIC_LIBRARIES := libutils
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_SRC_FILES := SharedBufferTest.cpp
 include $(BUILD_HOST_NATIVE_TEST)

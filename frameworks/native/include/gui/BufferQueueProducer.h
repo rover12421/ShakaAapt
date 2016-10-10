@@ -39,22 +39,11 @@ public:
     // flags indicating that previously-returned buffers are no longer valid.
     virtual status_t requestBuffer(int slot, sp<GraphicBuffer>* buf);
 
-    // setBufferCount updates the number of available buffer slots.  If this
-    // method succeeds, buffer slots will be both unallocated and owned by
-    // the BufferQueue object (i.e. they are not owned by the producer or
-    // consumer).
-    //
-    // This will fail if the producer has dequeued any buffers, or if
-    // bufferCount is invalid.  bufferCount must generally be a value
-    // between the minimum undequeued buffer count (exclusive) and NUM_BUFFER_SLOTS
-    // (inclusive).  It may also be set to zero (the default) to indicate
-    // that the producer does not wish to set a value.  The minimum value
-    // can be obtained by calling query(NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
-    // ...).
-    //
-    // This may only be called by the producer.  The consumer will be told
-    // to discard buffers through the onBuffersReleased callback.
-    virtual status_t setBufferCount(int bufferCount);
+    // see IGraphicsBufferProducer::setMaxDequeuedBufferCount
+    virtual status_t setMaxDequeuedBufferCount(int maxDequeuedBuffers);
+
+    // see IGraphicsBufferProducer::setAsyncMode
+    virtual status_t setAsyncMode(bool async);
 
     // dequeueBuffer gets the next buffer slot index for the producer to use.
     // If a buffer slot is available then that slot index is written to the
@@ -92,7 +81,7 @@ public:
     // In both cases, the producer will need to call requestBuffer to get a
     // GraphicBuffer handle for the returned slot.
     virtual status_t dequeueBuffer(int *outSlot, sp<Fence>* outFence,
-            bool async, uint32_t width, uint32_t height, PixelFormat format,
+            uint32_t width, uint32_t height, PixelFormat format,
             uint32_t usage);
 
     // See IGraphicBufferProducer::detachBuffer
@@ -128,7 +117,7 @@ public:
     //
     // The buffer will not be overwritten until the fence signals.  The fence
     // will usually be the one obtained from dequeueBuffer.
-    virtual void cancelBuffer(int slot, const sp<Fence>& fence);
+    virtual status_t cancelBuffer(int slot, const sp<Fence>& fence);
 
     // Query native window attributes.  The "what" values are enumerated in
     // window.h (e.g. NATIVE_WINDOW_FORMAT).
@@ -169,7 +158,7 @@ public:
     virtual status_t setSidebandStream(const sp<NativeHandle>& stream);
 
     // See IGraphicBufferProducer::allocateBuffers
-    virtual void allocateBuffers(bool async, uint32_t width, uint32_t height,
+    virtual void allocateBuffers(uint32_t width, uint32_t height,
             PixelFormat format, uint32_t usage);
 
     // See IGraphicBufferProducer::allowAllocation
@@ -181,17 +170,47 @@ public:
     // See IGraphicBufferProducer::getConsumerName
     virtual String8 getConsumerName() const override;
 
+    // See IGraphicBufferProducer::getNextFrameNumber
+    virtual uint64_t getNextFrameNumber() const override;
+
+    // See IGraphicBufferProducer::setSharedBufferMode
+    virtual status_t setSharedBufferMode(bool sharedBufferMode) override;
+
+    // See IGraphicBufferProducer::setAutoRefresh
+    virtual status_t setAutoRefresh(bool autoRefresh) override;
+
+    // See IGraphicBufferProducer::setDequeueTimeout
+    virtual status_t setDequeueTimeout(nsecs_t timeout) override;
+
+    // See IGraphicBufferProducer::getLastQueuedBuffer
+    virtual status_t getLastQueuedBuffer(sp<GraphicBuffer>* outBuffer,
+            sp<Fence>* outFence, float outTransformMatrix[16]) override;
+
+    // See IGraphicBufferProducer::getUniqueId
+    virtual status_t getUniqueId(uint64_t* outId) const override;
+
 private:
     // This is required by the IBinder::DeathRecipient interface
     virtual void binderDied(const wp<IBinder>& who);
+
+    // Returns the slot of the next free buffer if one is available or
+    // BufferQueueCore::INVALID_BUFFER_SLOT otherwise
+    int getFreeBufferLocked() const;
+
+    // Returns the next free slot if one is available or
+    // BufferQueueCore::INVALID_BUFFER_SLOT otherwise
+    int getFreeSlotLocked() const;
 
     // waitForFreeSlotThenRelock finds the oldest slot in the FREE state. It may
     // block if there are no available slots and we are not in non-blocking
     // mode (producer and consumer controlled by the application). If it blocks,
     // it will release mCore->mMutex while blocked so that other operations on
     // the BufferQueue may succeed.
-    status_t waitForFreeSlotThenRelock(const char* caller, bool async,
-            int* found, status_t* returnFlags) const;
+    enum class FreeSlotCaller {
+        Dequeue,
+        Attach,
+    };
+    status_t waitForFreeSlotThenRelock(FreeSlotCaller caller, int* found) const;
 
     sp<BufferQueueCore> mCore;
 
@@ -211,6 +230,9 @@ private:
     // since the previous buffer might have already been acquired.
     sp<Fence> mLastQueueBufferFence;
 
+    Rect mLastQueuedCrop;
+    uint32_t mLastQueuedTransform;
+
     // Take-a-ticket system for ensuring that onFrame* callbacks are called in
     // the order that frames are queued. While the BufferQueue lock
     // (mCore->mMutex) is held, a ticket is retained by the producer. After
@@ -220,6 +242,10 @@ private:
     int mNextCallbackTicket; // Protected by mCore->mMutex
     int mCurrentCallbackTicket; // Protected by mCallbackMutex
     Condition mCallbackCondition;
+
+    // Sets how long dequeueBuffer or attachBuffer will block if a buffer or
+    // slot is not yet available.
+    nsecs_t mDequeueTimeout;
 
 }; // class BufferQueueProducer
 

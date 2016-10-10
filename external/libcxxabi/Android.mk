@@ -32,7 +32,6 @@ LIBCXXABI_SRC_FILES := \
     src/cxa_vector.cpp \
     src/cxa_virtual.cpp \
     src/exception.cpp \
-    src/fallback_malloc.ipp \
     src/private_typeinfo.cpp \
     src/stdexcept.cpp \
     src/typeinfo.cpp \
@@ -67,14 +66,6 @@ LOCAL_CPPFLAGS_x86_64 := -DLIBCXXABI_USE_LLVM_UNWINDER=0
 LOCAL_RTTI_FLAG := $(LIBCXXABI_RTTI_FLAG)
 LOCAL_CXX_STL := none
 LOCAL_SANITIZE := never
-# When src/cxa_exception.cpp is compiled with Clang assembler
-# __cxa_end_cleanup_impl, although marked as used, was discarded
-# since it is used only in embedded assembly code.
-# This caused the following warning when linking libc++.so:
-# libc++_static.a(cxa_exception.o)(.text.__cxa_end_cleanup+0x2):
-# warning: relocation refers to discarded section
-# See also http://llvm.org/bugs/show_bug.cgi?id=21292.
-LOCAL_CLANG_CFLAGS_arm += -no-integrated-as
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)

@@ -509,7 +509,7 @@ typedef enum OMX_EVENTTYPE
     OMX_EventKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     OMX_EventVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
 
-    /** Event when tunneled decoder has rendered an output
+    /** Event when tunneled decoder has rendered an output or reached EOS
      *  nData1 must contain the number of timestamps returned
      *  pEventData must point to an array of the OMX_VIDEO_RENDEREVENTTYPE structs containing the
      *  render-timestamps of each frame. Component may batch rendered timestamps using this event,
@@ -518,8 +518,27 @@ typedef enum OMX_EVENTTYPE
      *
      *  If component is doing frame-rate conversion, it must signal the render time of each
      *  converted frame, and must interpolate media timestamps for in-between frames.
+     *
+     *  When the component reached EOS, it must signal an EOS timestamp using the same mechanism.
+     *  This is in addition to the timestamp of the last rendered frame, and should follow that
+     *  frame.
      */
     OMX_EventOutputRendered = 0x7F000001,
+
+    /** For framework internal use only: event sent by OMXNodeInstance when it receives a graphic
+     *  input buffer with a new dataspace for encoding. |arg1| will contain the dataspace. |arg2|
+     *  will contain the ColorAspects requested by the component (or framework defaults) using
+     *  the following bitfield layout:
+     *
+     *       +----------+-------------+----------------+------------+
+     *       |   Range  |  Primaries  |  MatrixCoeffs  |  Transfer  |
+     *       +----------+-------------+----------------+------------+
+     *  bits:  31....24   23.......16   15...........8   7........0
+     *
+     *  TODO: We would really need to tie this to an output buffer, but OMX does not provide a
+     *  fool-proof way to do that for video encoders.
+     */
+    OMX_EventDataSpaceChanged,
     OMX_EventMax = 0x7FFFFFFF
 } OMX_EVENTTYPE;
 
