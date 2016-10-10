@@ -1036,6 +1036,9 @@ static ssize_t extractPlatformBuildVersion(AssetManager& assets, Bundle* bundle)
     ResXMLTree tree;
     Asset* asset = assets.openNonAsset(cookie, "AndroidManifest.xml", Asset::ACCESS_STREAMING);
     if (asset == NULL) {
+        //[Rover12421]>
+        return NO_ERROR;
+        //[Rover12421]<
         fprintf(stderr, "ERROR: Platform AndroidManifest.xml not found\n");
         return UNKNOWN_ERROR;
     }
