@@ -1755,7 +1755,13 @@ ResourceTable::ResourceTable(Bundle* bundle, const String16& assetsPackage, Reso
     , mNumLocal(0)
     , mBundle(bundle)
 {
-    ssize_t packageId = -1;
+    //[Rover12421]>
+    ssize_t packageId = mBundle->getForcedPackageId();
+//    ssize_t packageId = -1;
+    if(packageId != -1) {
+        goto END_PACKAGE_ID;
+    }
+    //[Rover12421]<
     switch (mPackageType) {
         case App:
         case AppFeature:
@@ -1774,6 +1780,9 @@ ResourceTable::ResourceTable(Bundle* bundle, const String16& assetsPackage, Reso
             assert(0);
             break;
     }
+    //[Rover12421]>
+    END_PACKAGE_ID:
+    //[Rover12421]<
     sp<Package> package = new Package(mAssetsPackage, packageId);
     mPackages.add(assetsPackage, package);
     mOrderedPackages.add(package);
