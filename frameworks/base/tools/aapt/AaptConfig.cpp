@@ -244,6 +244,10 @@ bool parseCommaSeparatedList(const String8& str, std::set<ConfigDescription>* ou
 }
 
 void applyVersionForCompatibility(ConfigDescription* config) {
+    //[Rover12421]>
+    return;
+    //[Rover12421]<
+
     if (config == NULL) {
         return;
     }
