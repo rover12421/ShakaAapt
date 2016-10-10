@@ -1013,6 +1013,9 @@ status_t XMLNode::parseValues(const sp<AaptAssets>& assets,
 status_t XMLNode::assignResourceIds(const sp<AaptAssets>& assets,
                                     const ResourceTable* table)
 {
+    //[Rover12421]>
+    return NO_ERROR;
+    //[Rover12421]<
     bool hasErrors = false;
 
     if (getType() == TYPE_ELEMENT) {
